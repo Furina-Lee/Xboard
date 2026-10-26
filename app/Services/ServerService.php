@@ -262,12 +262,19 @@ class ServerService
         $serverPort = $node->server_port;
         $host = $node->host;
 
+        // MundoProxy decodes MX transport settings as an object. PHP's empty
+        // array would otherwise be serialized as JSON [] and rejected by Go.
+        $networkSettings = data_get($protocolSettings, 'network_settings');
+        $networkSettingsObject = is_array($networkSettings) && empty($networkSettings)
+            ? (object) []
+            : ($networkSettings ?? (object) []);
+
         $baseConfig = [
             'protocol' => $nodeType,
             'listen_ip' => '0.0.0.0',
             'server_port' => (int) $serverPort,
             'network' => data_get($protocolSettings, 'network'),
-            'networkSettings' => data_get($protocolSettings, 'network_settings') ?: null,
+            'networkSettings' => $nodeType === 'mx' ? $networkSettingsObject : ($networkSettings ?: null),
         ];
 
         $response = match ($nodeType) {
@@ -356,7 +363,7 @@ class ServerService
                 'allow_insecure' => (bool) data_get($protocolSettings, 'allow_insecure', data_get($protocolSettings, 'tls_settings.allow_insecure', false)),
                 'tls' => (int) data_get($protocolSettings, 'tls', 0),
                 'tls_settings' => data_get($protocolSettings, 'tls_settings', []),
-                'network_settings' => data_get($protocolSettings, 'network_settings', []),
+                'network_settings' => $networkSettingsObject,
             ],
             'socks' => [
                 ...$baseConfig,
