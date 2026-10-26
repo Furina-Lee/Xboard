@@ -18,6 +18,7 @@ class General extends AbstractProtocol
         Server::TYPE_TROJAN,
         Server::TYPE_HYSTERIA,
         Server::TYPE_ANYTLS,
+        Server::TYPE_MX,
         Server::TYPE_SOCKS,
         Server::TYPE_TUIC,
         Server::TYPE_HTTP,
@@ -45,6 +46,7 @@ class General extends AbstractProtocol
                 Server::TYPE_SOCKS => self::buildSocks($item['password'], $item),
                 Server::TYPE_TUIC => self::buildTuic($item['password'], $item),
                 Server::TYPE_HTTP => self::buildHttp($item['password'], $item),
+                Server::TYPE_MX => Helper::buildMxUri($item['password'], $item),
                 default => '',
             };
         }
@@ -146,6 +148,12 @@ class General extends AbstractProtocol
                 if ($extra = data_get($protocol_settings, 'network_settings.extra'))
                     $config['extra'] = is_array($extra) && !empty($extra) ? json_encode($extra) : null;
                 break;
+            case 'mc1':
+                Helper::configureMc1Settings(data_get($protocol_settings, 'network_settings', []), $config, $server['host']);
+                break;
+            case 'mundordp':
+                Helper::configureMundoRdpSettings(data_get($protocol_settings, 'network_settings', []), $config);
+                break;
             default:
                 break;
         }
@@ -235,6 +243,12 @@ class General extends AbstractProtocol
                 if ($extra = data_get($protocol_settings, 'network_settings.extra'))
                     $config['extra'] = is_array($extra) && !empty($extra) ? json_encode($extra) : null;
                 break;
+            case 'mc1':
+                Helper::configureMc1Settings(data_get($protocol_settings, 'network_settings', []), $config, $server['host']);
+                break;
+            case 'mundordp':
+                Helper::configureMundoRdpSettings(data_get($protocol_settings, 'network_settings', []), $config);
+                break;
         }
 
         $user = $uuid . '@' . Helper::wrapIPv6($host) . ':' . $port;
@@ -309,6 +323,12 @@ class General extends AbstractProtocol
                     $array['mode'] = $mode;
                 if ($extra = data_get($protocol_settings, 'network_settings.extra'))
                     $array['extra'] = is_array($extra) && !empty($extra) ? json_encode($extra) : null;
+                break;
+            case 'mc1':
+                Helper::configureMc1Settings(data_get($protocol_settings, 'network_settings', []), $array, $server['host']);
+                break;
+            case 'mundordp':
+                Helper::configureMundoRdpSettings(data_get($protocol_settings, 'network_settings', []), $array);
                 break;
             default:
                 break;

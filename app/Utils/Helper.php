@@ -259,6 +259,113 @@ class Helper
         return strtr(rawurlencode($str), $revert);
     }
 
+    public static function buildMxUri($password, array $server): string
+    {
+        $settings = data_get($server, 'protocol_settings', []);
+        $tlsSettings = data_get($settings, 'tls_settings', []);
+        $network = data_get($settings, 'network', 'tcp');
+        $networkSettings = data_get($settings, 'network_settings', []);
+        $config = [
+            'mode' => 'multi',
+            'security' => '',
+            'type' => $network,
+        ];
+
+        switch ((int) data_get($settings, 'tls', 0)) {
+            case 1:
+                $config['security'] = 'tls';
+                $config['fp'] = data_get($tlsSettings, 'fingerprint', 'chrome');
+                $serverName = data_get($settings, 'server_name') ?: data_get($tlsSettings, 'server_name', '');
+                if ($serverName !== '') {
+                    $config['sni'] = $serverName;
+                }
+                if (data_get($settings, 'allow_insecure', data_get($tlsSettings, 'allow_insecure', false))) {
+                    $config['allowInsecure'] = '1';
+                }
+                break;
+            case 2:
+                $config['security'] = 'reality';
+                $config['pbk'] = data_get($tlsSettings, 'public_key', '');
+                $config['sid'] = data_get($tlsSettings, 'short_id', '');
+                $serverName = data_get($settings, 'server_name') ?: data_get($tlsSettings, 'server_name', '');
+                if ($serverName !== '') {
+                    $config['sni'] = $serverName;
+                    $config['servername'] = $serverName;
+                }
+                $config['spx'] = '/';
+                $config['fp'] = data_get($tlsSettings, 'fingerprint', 'chrome');
+                break;
+        }
+
+        switch ($network) {
+            case 'ws':
+                if ($path = data_get($networkSettings, 'path')) {
+                    $config['path'] = $path;
+                }
+                if ($host = data_get($networkSettings, 'headers.Host')) {
+                    $config['host'] = $host;
+                }
+                break;
+            case 'grpc':
+                if ($serviceName = data_get($networkSettings, 'serviceName')) {
+                    $config['serviceName'] = $serviceName;
+                }
+                break;
+            case 'mc1':
+                self::configureMc1Settings($networkSettings, $config, $server['host'] ?? '');
+                break;
+            case 'mundordp':
+                self::configureMundoRdpSettings($networkSettings, $config);
+                break;
+            case 'xhttp':
+                $config['type'] = 'jatp';
+                $config['endpoint_path'] = data_get($networkSettings, 'path');
+                $config['endpoint'] = data_get($networkSettings, 'host', $server['host'] ?? '');
+                if ($split = data_get($networkSettings, 'split')) {
+                    $config['split'] = $split;
+                }
+                break;
+        }
+
+        return 'mx://' . rawurlencode((string) $password) . '@' . self::wrapIPv6($server['host']) . ':' . $server['port']
+            . '?' . http_build_query(array_filter(
+                $config,
+                static fn($value) => $value !== null && $value !== ''
+            ))
+            . '#' . self::encodeURIComponent($server['name']) . "\r\n";
+    }
+
+    public static function configureMc1Settings(array $settings, array &$config, string $defaultHost = ''): void
+    {
+        $config['path'] = $settings['path'] ?? '/';
+        $config['host'] = $settings['host'] ?? $defaultHost;
+        $config['mode'] = $settings['mode'] ?? 'auto';
+        if (isset($settings['cidrSegments'])) {
+            $config['cidr'] = is_array($settings['cidrSegments'])
+                ? implode(',', $settings['cidrSegments'])
+                : $settings['cidrSegments'];
+        }
+    }
+
+    public static function configureMundoRdpSettings(array $settings, array &$config): void
+    {
+        $config['username'] = isset($settings['username']) && trim((string) $settings['username']) !== ''
+            ? $settings['username']
+            : 'MundoUser';
+
+        foreach (['certificateFingerprint', 'fakeTitle', 'fakeMessage'] as $field) {
+            if (isset($settings[$field]) && trim((string) $settings[$field]) !== '') {
+                $config[$field] = $settings[$field];
+            }
+        }
+
+        foreach (['acceptProxyProtocol', 'useTLSCertificate'] as $field) {
+            if (array_key_exists($field, $settings)) {
+                $config[$field] = filter_var($settings[$field], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+    }
+
     public static function getEmailSuffix(): array|bool
     {
         $suffix = admin_setting('email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT);

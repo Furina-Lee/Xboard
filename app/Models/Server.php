@@ -66,6 +66,7 @@ class Server extends Model
     public const TYPE_TUIC = 'tuic';
     public const TYPE_SHADOWSOCKS = 'shadowsocks';
     public const TYPE_ANYTLS = 'anytls';
+    public const TYPE_MX = 'mx';
     public const TYPE_SOCKS = 'socks';
     public const TYPE_NAIVE = 'naive';
     public const TYPE_HTTP = 'http';
@@ -104,6 +105,7 @@ class Server extends Model
         self::TYPE_TUIC,
         self::TYPE_SHADOWSOCKS,
         self::TYPE_ANYTLS,
+        self::TYPE_MX,
         self::TYPE_SOCKS,
         self::TYPE_NAIVE,
         self::TYPE_HTTP,
@@ -286,6 +288,24 @@ class Server extends Model
             'alpn' => ['type' => 'array', 'default' => ['h3']],
             'udp_relay_mode' => ['type' => 'string', 'default' => 'native'],
             'tls' => self::TLS_CONFIGURATION
+        ],
+        self::TYPE_MX => [
+            'tls' => ['type' => 'integer', 'default' => 0],
+            'tls_settings' => [
+                'type' => 'object',
+                'fields' => [
+                    'server_name' => ['type' => 'string', 'default' => null],
+                    'allow_insecure' => ['type' => 'boolean', 'default' => false],
+                    'fingerprint' => ['type' => 'string', 'default' => 'chrome'],
+                    'public_key' => ['type' => 'string', 'default' => null],
+                    'short_id' => ['type' => 'string', 'default' => null],
+                    'private_key' => ['type' => 'string', 'default' => null],
+                ],
+            ],
+            'server_name' => ['type' => 'string', 'default' => null],
+            'allow_insecure' => ['type' => 'boolean', 'default' => false],
+            'network' => ['type' => 'string', 'default' => 'tcp'],
+            'network_settings' => ['type' => 'array', 'default' => []],
         ],
         self::TYPE_ANYTLS => [
             'padding_scheme' => [

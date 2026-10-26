@@ -76,6 +76,13 @@ class ServerService
             }
             $server->password = $server->generateServerPassword($user);
             $server->rate = $server->getCurrentRate();
+            if ($server->type === Server::TYPE_MX) {
+                $settings = $server->protocol_settings;
+                if (is_array($settings) && isset($settings['tls_settings']['private_key'])) {
+                    unset($settings['tls_settings']['private_key']);
+                    $server->protocol_settings = $settings;
+                }
+            }
             return $server;
         })->toArray();
 
@@ -341,6 +348,15 @@ class ServerService
                 'server_name' => $protocolSettings['tls']['server_name'],
                 'tls_settings' => $protocolSettings['tls'],
                 'padding_scheme' => $protocolSettings['padding_scheme'],
+            ],
+            'mx' => [
+                ...$baseConfig,
+                'host' => $host,
+                'server_name' => data_get($protocolSettings, 'server_name', data_get($protocolSettings, 'tls_settings.server_name')),
+                'allow_insecure' => (bool) data_get($protocolSettings, 'allow_insecure', data_get($protocolSettings, 'tls_settings.allow_insecure', false)),
+                'tls' => (int) data_get($protocolSettings, 'tls', 0),
+                'tls_settings' => data_get($protocolSettings, 'tls_settings', []),
+                'network_settings' => data_get($protocolSettings, 'network_settings', []),
             ],
             'socks' => [
                 ...$baseConfig,

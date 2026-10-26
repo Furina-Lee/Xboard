@@ -107,6 +107,30 @@ class ServerSave extends FormRequest
             'alpn' => 'nullable|string',
             'padding_scheme' => 'nullable|array',
         ],
+        'mx' => [
+            'tls' => 'nullable|integer|in:0,1,2',
+            'tls_settings' => 'nullable|array',
+            'tls_settings.server_name' => 'nullable|string',
+            'tls_settings.allow_insecure' => 'nullable|boolean',
+            'tls_settings.fingerprint' => 'nullable|string',
+            'tls_settings.public_key' => 'nullable|string',
+            'tls_settings.private_key' => 'nullable|string',
+            'tls_settings.short_id' => 'nullable|string',
+            'server_name' => 'nullable|string',
+            'allow_insecure' => 'nullable|boolean',
+            'network' => 'required|string|in:tcp,ws,grpc,httpupgrade,xhttp,mc1,mundordp',
+            'network_settings' => 'nullable|array',
+            'network_settings.username' => 'nullable|string',
+            'network_settings.certificateFingerprint' => 'nullable|string',
+            'network_settings.fakeTitle' => 'nullable|string',
+            'network_settings.fakeMessage' => 'nullable|string',
+            'network_settings.acceptProxyProtocol' => 'nullable|boolean',
+            'network_settings.useTLSCertificate' => 'nullable|boolean',
+            'network_settings.path' => 'nullable|string',
+            'network_settings.host' => 'nullable|string',
+            'network_settings.mode' => 'nullable|string',
+            'network_settings.cidrSegments' => 'nullable|array',
+        ],
     ];
 
     private function getBaseRules(): array
@@ -186,6 +210,10 @@ class ServerSave extends FormRequest
             'anytls' => array_merge(
                 $rules,
                 $this->buildTlsObjectRules(includeRoot: true),
+            ),
+            'mx' => array_merge(
+                $rules,
+                $this->buildTlsSettingsRules(),
             ),
             default => $rules,
         };
