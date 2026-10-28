@@ -288,7 +288,11 @@ run_update() {
   "${COMPOSE[@]}" stop "$SERVICE"
   log "running controlled xboard:update with target image"
   local target_compose=(docker compose -f "$COMPOSE_FILE" -f "$OVERRIDE")
-  if ! "${target_compose[@]}" run --rm --no-deps -T --entrypoint /bin/sh "$SERVICE" -c 'php artisan xboard:update' 2>&1 | tee "$update_log"; then
+  # Keep the image entrypoint so it can select array/sync drivers when the
+  # embedded Redis process is not available in this disposable container.
+  # Overriding the entrypoint bypasses that fallback and makes PhpRedis try a
+  # missing socket/host during xboard:update.
+  if ! "${target_compose[@]}" run --rm --no-deps -T "$SERVICE" sh -c 'exit 0' 2>&1 | tee "$update_log"; then
     return 1
   fi
   if grep -Eiq 'SQLSTATE\[|Migration table not found|\b(exception|fatal error|error):' "$update_log"; then
