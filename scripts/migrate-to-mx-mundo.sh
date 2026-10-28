@@ -16,10 +16,10 @@ MYSQL_SERVICE=""
 BACKUP_DIR=""
 HEALTH_URL=""
 IMAGE=""
+DOCKERFILE="Dockerfile"
 MODE="dry-run"
 YES=0
 SKIP_DB_BACKUP=0
-DISABLE_CADDY=0
 
 usage() {
   cat <<EOF
@@ -39,9 +39,9 @@ Options:
   --backup-dir DIR          Snapshot destination (default: sibling backup directory)
   --health-url URL          URL to check after startup
   --image IMAGE             Target image tag (default: xboard:mx-mundo-<commit>)
+  --dockerfile FILE         Dockerfile in build checkout (default: Dockerfile)
   --yes                     Do not ask for the apply confirmation
   --skip-db-backup          Skip the script's MySQL dump (use only after an external backup)
-  --disable-caddy            Disable embedded Caddy for an external reverse proxy such as 1Panel
   -h, --help                Show this help
 
 The script does not run xboard:install, does not edit .env, and never uses
@@ -69,9 +69,9 @@ while [[ $# -gt 0 ]]; do
     --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
     --health-url) HEALTH_URL="$2"; shift 2 ;;
     --image) IMAGE="$2"; shift 2 ;;
+    --dockerfile) DOCKERFILE="$2"; shift 2 ;;
     --yes) YES=1; shift ;;
     --skip-db-backup) SKIP_DB_BACKUP=1; shift ;;
-    --disable-caddy) DISABLE_CADDY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown argument: $1" ;;
   esac
@@ -145,11 +145,11 @@ print_plan() {
   log "compose: $COMPOSE_FILE"
   log "service: $SERVICE"
   log "mysqldump service: ${MYSQL_SERVICE:-$SERVICE}"
-  log "disable embedded Caddy: $DISABLE_CADDY"
   log "target repository: $REPO_URL"
   log "target ref: $BRANCH ($BACKEND_REF)"
   log "target admin gitlink: $ADMIN_REF"
   log "target image: $IMAGE"
+  log "dockerfile: $DOCKERFILE"
   log "build checkout: $BACKUP_DIR/source"
   log "snapshot: $BACKUP_DIR"
   log "database: $DB_USERNAME@$DB_HOST:$DB_PORT/$DB_DATABASE"
@@ -240,14 +240,6 @@ services:
   $SERVICE:
     image: $IMAGE
 EOF
-  if [[ "$DISABLE_CADDY" == "1" ]]; then
-    cat >> "$OVERRIDE" <<EOF
-    environment:
-      ENABLE_CADDY: "false"
-    ports:
-      - "127.0.0.1:8076:8076"
-EOF
-  fi
 }
 
 write_rollback_override() {
@@ -283,7 +275,9 @@ build_target() {
   local checkout="$BACKUP_DIR/source"
   prepare_build_checkout
   log "building target image $IMAGE"
+  [[ -f "$checkout/$DOCKERFILE" ]] || die "Dockerfile not found in build checkout: $DOCKERFILE"
   docker build --pull \
+    --file "$checkout/$DOCKERFILE" \
     --build-arg "REPO_URL=$REPO_URL" \
     --build-arg "BRANCH_NAME=$BRANCH" \
     --build-arg "CACHEBUST=$BACKEND_REF" \
@@ -300,12 +294,20 @@ run_update() {
   "${COMPOSE[@]}" stop "$SERVICE"
   log "running controlled xboard:update with target image"
   local target_compose=(docker compose -f "$COMPOSE_FILE" -f "$OVERRIDE")
-  # Keep the image entrypoint so it can select array/sync drivers when the
-  # embedded Redis process is not available in this disposable container.
-  # Overriding the entrypoint bypasses that fallback and makes PhpRedis try a
-  # missing socket/host during xboard:update.
-  if ! "${target_compose[@]}" run --rm --no-deps -T "$SERVICE" sh -c 'exit 0' 2>&1 | tee "$update_log"; then
-    return 1
+  write_override
+  if [[ "$DOCKERFILE" == "Dockerfile.1panel" ]]; then
+    # The legacy 1Panel image has no auto-update entrypoint.
+    if ! "${target_compose[@]}" run --rm --no-deps -T \
+      -e CACHE_DRIVER=array -e QUEUE_CONNECTION=sync -e SESSION_DRIVER=array \
+      "$SERVICE" php artisan xboard:update 2>&1 | tee "$update_log"; then
+      return 1
+    fi
+  else
+    # Keep the all-in-one entrypoint so it can choose array/sync drivers when
+    # embedded Redis is not available in this disposable update container.
+    if ! "${target_compose[@]}" run --rm --no-deps -T "$SERVICE" sh -c 'exit 0' 2>&1 | tee "$update_log"; then
+      return 1
+    fi
   fi
   if grep -Eiq 'SQLSTATE\[|Migration table not found|\b(exception|fatal error|error):' "$update_log"; then
     warn "update output contains an error marker; see $update_log"

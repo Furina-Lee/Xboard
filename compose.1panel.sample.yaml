@@ -11,11 +11,17 @@
 #   - Redis: choose the built-in Redis (already provided by this image)
 services:
   xboard:
-    image: ghcr.io/cedar2025/xboard:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.1panel
+      args:
+        REPO_URL: https://github.com/Furina-Lee/Xboard.git
+        BRANCH_NAME: feature/mx-mundo-transport
+        CACHEBUST: mx-mundo
+    image: xboard:mx-mundo
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7001:7001"
-      - "127.0.0.1:8076:8076"
+      - "7001:7001"
     networks:
       - default
       - 1panel-network
@@ -29,7 +35,6 @@ services:
     environment:
       - RESOURCE_PROFILE=balanced      # minimal | balanced | performance | auto
       - ENABLE_HORIZON=true
-      # 1Panel/OpenResty is the external reverse proxy; do not run embedded Caddy.
       - ENABLE_CADDY=false
       - docker=true
 

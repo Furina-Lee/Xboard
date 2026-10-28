@@ -235,13 +235,7 @@ git clone --recurse-submodules \
 cp compose.1panel.sample.yaml compose.yaml
 ```
 
-确认 `compose.yaml` 中存在：
-
-```yaml
-networks:
-  1panel-network:
-    external: true
-```
+`compose.1panel.sample.yaml` 使用专用的 `Dockerfile.1panel`，保持原作者 1Panel 的无 Caddy 镜像方式：Octane 直接监听 7001，由 1Panel OpenResty 统一反向代理。该模板仍加入外部 Docker 网络 `1panel-network`。
 
 初始化：
 
@@ -265,39 +259,17 @@ docker compose up -d
 
 ### 1Panel 反向代理
 
-1Panel OpenResty 已经负责反向代理，因此建议关闭容器内置 Caddy。关闭后，容器的 HTTP 端口使用 `7001`，WebSocket 服务单独使用 `8076`。
-
-在 `compose.yaml` 中确认存在：
-
-```yaml
-environment:
-  - ENABLE_CADDY=false
-ports:
-  - "127.0.0.1:7001:7001"
-  - "127.0.0.1:8076:8076"
-```
-
-在 1Panel OpenResty 网站中添加：
+原作者 1Panel 方式只需要将域名反向代理到容器的 7001 端口。此 1Panel 镜像不包含 Caddy；按原始配置不单独暴露或代理 8076。
 
 ```nginx
-location /ws {
-    proxy_pass http://127.0.0.1:8076;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $http_host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_read_timeout 3600s;
-    proxy_buffering off;
-}
-
 location ^~ / {
     proxy_pass http://127.0.0.1:7001;
     proxy_http_version 1.1;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $http_connection;
     proxy_read_timeout 60s;
     proxy_buffering off;
     proxy_cache off;
@@ -314,23 +286,28 @@ curl -fsSL \
   https://raw.githubusercontent.com/Furina-Lee/Xboard/feature/mx-mundo-transport/scripts/migrate-to-mx-mundo.sh \
   -o migrate-to-mx-mundo.sh
 chmod +x migrate-to-mx-mundo.sh
-./migrate-to-mx-mundo.sh --compose compose.yaml --service xboard --dry-run
+./migrate-to-mx-mundo.sh \
+  --compose compose.yaml \
+  --service xboard \
+  --dockerfile Dockerfile.1panel \
+  --dry-run
 ```
 
-确认参数无误后执行：
+确认计划中的 Dockerfile 是 `Dockerfile.1panel`、目标镜像名正确，参数无误后执行：
 
 ```bash
 ./migrate-to-mx-mundo.sh \
   --compose compose.yaml \
   --service xboard \
+  --dockerfile Dockerfile.1panel \
+  --image xboard:mx-mundo-1panel \
   --backup-dir /opt/1panel/backup/xboard/mx-mundo-$(date -u +%Y%m%dT%H%M%SZ) \
   --health-url http://127.0.0.1:7001/ \
-  --disable-caddy \
   --skip-db-backup \
   --apply
 ```
 
-`--disable-caddy` 会在生成的 override 中设置 `ENABLE_CADDY=false`，并映射 `127.0.0.1:8076`，供 1Panel OpenResty 代理 `/ws`。如果 Xboard 容器没有 `mysqldump`，且你已经在 1Panel 完成数据库备份，应保留 `--skip-db-backup`。
+`Dockerfile.1panel` 基于原作者的无 Caddy 1Panel 镜像方式构建 MX 代码；外部 OpenResty 仍只代理到 7001，原有 Compose 网络、`.env` 和端口配置保持不变。因为已由 1Panel 完成数据库备份，此例使用 `--skip-db-backup`。
 
 如果 Xboard 容器没有 `mysqldump`，指定 1Panel MySQL 服务名：
 

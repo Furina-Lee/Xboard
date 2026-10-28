@@ -137,25 +137,25 @@ Run a dry run first:
 ./migrate-to-mx-mundo.sh \
   --compose compose.yaml \
   --service xboard \
+  --dockerfile Dockerfile.1panel \
   --dry-run
 ```
 
-Then apply the migration. Keep the existing `.env` values unchanged, especially the 1Panel MySQL container hostname, database name, username, password, and `REDIS_*` settings. Since 1Panel OpenResty is the external reverse proxy, disable the embedded Caddy and use a local health URL:
+Then apply the migration with the original no-Caddy 1Panel image target. Keep the existing `.env` values unchanged, especially the 1Panel MySQL container hostname, database name, username, password, and `REDIS_*` settings. Use the legacy 1Panel image target without embedded Caddy; OpenResty continues to proxy the single port 7001:
 
 ```bash
 ./migrate-to-mx-mundo.sh \
   --compose compose.yaml \
   --service xboard \
+  --dockerfile Dockerfile.1panel \
+  --image xboard:mx-mundo-1panel \
   --backup-dir /opt/1panel/backup/xboard/mx-mundo-$(date -u +%Y%m%dT%H%M%SZ) \
   --health-url http://127.0.0.1:7001/ \
-  --disable-caddy \
   --skip-db-backup \
   --apply
 ```
 
-`--disable-caddy` writes `ENABLE_CADDY=false` to the generated override and publishes the container's WebSocket port on `127.0.0.1:8076`. Configure OpenResty to proxy `/ws` to that port and the remaining HTTP traffic to `127.0.0.1:7001`.
-
-The Xboard service must be able to reach the existing 1Panel MySQL container through `1panel-network`. Do not replace `compose.1panel.yaml` with the default bridge template during this migration. The script changes the application image and the requested Caddy/WS override while leaving `.env`, the database, and the OpenResty configuration untouched.
+The no-Caddy image preserves the original 1Panel model: Octane listens on 7001 and OpenResty remains the single external upstream. Do not publish or proxy 8076 separately. The Xboard service must remain attached to `1panel-network`; do not replace the current Compose file, `.env`, database, ports, or OpenResty configuration.
 
 If the existing Xboard image does not contain `mysqldump`, identify the 1Panel MySQL container service name and pass it explicitly:
 
