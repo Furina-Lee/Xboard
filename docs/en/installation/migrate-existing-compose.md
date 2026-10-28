@@ -140,18 +140,22 @@ Run a dry run first:
   --dry-run
 ```
 
-Then apply the migration. Keep the existing `.env` values unchanged, especially the 1Panel MySQL container hostname, database name, username, password, and `REDIS_*` settings:
+Then apply the migration. Keep the existing `.env` values unchanged, especially the 1Panel MySQL container hostname, database name, username, password, and `REDIS_*` settings. Since 1Panel OpenResty is the external reverse proxy, disable the embedded Caddy and use a local health URL:
 
 ```bash
 ./migrate-to-mx-mundo.sh \
   --compose compose.yaml \
   --service xboard \
   --backup-dir /opt/1panel/backup/xboard/mx-mundo-$(date -u +%Y%m%dT%H%M%SZ) \
-  --health-url https://panel.example.com/ \
+  --health-url http://127.0.0.1:7001/ \
+  --disable-caddy \
+  --skip-db-backup \
   --apply
 ```
 
-The Xboard service must be able to reach the existing 1Panel MySQL container through `1panel-network`. Do not replace `compose.1panel.yaml` with the default bridge template during this migration. The script changes only the application image through a generated override and leaves the OpenResty reverse proxy pointing at `127.0.0.1:7001`.
+`--disable-caddy` writes `ENABLE_CADDY=false` to the generated override and publishes the container's WebSocket port on `127.0.0.1:8076`. Configure OpenResty to proxy `/ws` to that port and the remaining HTTP traffic to `127.0.0.1:7001`.
+
+The Xboard service must be able to reach the existing 1Panel MySQL container through `1panel-network`. Do not replace `compose.1panel.yaml` with the default bridge template during this migration. The script changes the application image and the requested Caddy/WS override while leaving `.env`, the database, and the OpenResty configuration untouched.
 
 If the existing Xboard image does not contain `mysqldump`, identify the 1Panel MySQL container service name and pass it explicitly:
 

@@ -19,6 +19,7 @@ IMAGE=""
 MODE="dry-run"
 YES=0
 SKIP_DB_BACKUP=0
+DISABLE_CADDY=0
 
 usage() {
   cat <<EOF
@@ -39,7 +40,8 @@ Options:
   --health-url URL          URL to check after startup
   --image IMAGE             Target image tag (default: xboard:mx-mundo-<commit>)
   --yes                     Do not ask for the apply confirmation
-  --skip-db-backup          Refuse the database backup requirement explicitly
+  --skip-db-backup          Skip the script's MySQL dump (use only after an external backup)
+  --disable-caddy            Disable embedded Caddy for an external reverse proxy such as 1Panel
   -h, --help                Show this help
 
 The script does not run xboard:install, does not edit .env, and never uses
@@ -69,6 +71,7 @@ while [[ $# -gt 0 ]]; do
     --image) IMAGE="$2"; shift 2 ;;
     --yes) YES=1; shift ;;
     --skip-db-backup) SKIP_DB_BACKUP=1; shift ;;
+    --disable-caddy) DISABLE_CADDY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown argument: $1" ;;
   esac
@@ -142,6 +145,7 @@ print_plan() {
   log "compose: $COMPOSE_FILE"
   log "service: $SERVICE"
   log "mysqldump service: ${MYSQL_SERVICE:-$SERVICE}"
+  log "disable embedded Caddy: $DISABLE_CADDY"
   log "target repository: $REPO_URL"
   log "target ref: $BRANCH ($BACKEND_REF)"
   log "target admin gitlink: $ADMIN_REF"
@@ -236,6 +240,14 @@ services:
   $SERVICE:
     image: $IMAGE
 EOF
+  if [[ "$DISABLE_CADDY" == "1" ]]; then
+    cat >> "$OVERRIDE" <<EOF
+    environment:
+      ENABLE_CADDY: "false"
+    ports:
+      - "127.0.0.1:8076:8076"
+EOF
+  fi
 }
 
 write_rollback_override() {

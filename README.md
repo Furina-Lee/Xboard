@@ -265,23 +265,39 @@ docker compose up -d
 
 ### 1Panel 反向代理
 
-在 1Panel OpenResty 网站中将域名反向代理到：
+1Panel OpenResty 已经负责反向代理，因此建议关闭容器内置 Caddy。关闭后，容器的 HTTP 端口使用 `7001`，WebSocket 服务单独使用 `8076`。
 
-```text
-http://127.0.0.1:7001
+在 `compose.yaml` 中确认存在：
+
+```yaml
+environment:
+  - ENABLE_CADDY=false
+ports:
+  - "127.0.0.1:7001:7001"
+  - "127.0.0.1:8076:8076"
 ```
 
-建议保留 WebSocket 相关请求头：
+在 1Panel OpenResty 网站中添加：
 
 ```nginx
+location /ws {
+    proxy_pass http://127.0.0.1:8076;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 3600s;
+    proxy_buffering off;
+}
+
 location ^~ / {
     proxy_pass http://127.0.0.1:7001;
     proxy_http_version 1.1;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $http_connection;
     proxy_read_timeout 60s;
     proxy_buffering off;
     proxy_cache off;
@@ -308,9 +324,13 @@ chmod +x migrate-to-mx-mundo.sh
   --compose compose.yaml \
   --service xboard \
   --backup-dir /opt/1panel/backup/xboard/mx-mundo-$(date -u +%Y%m%dT%H%M%SZ) \
-  --health-url https://你的域名/ \
+  --health-url http://127.0.0.1:7001/ \
+  --disable-caddy \
+  --skip-db-backup \
   --apply
 ```
+
+`--disable-caddy` 会在生成的 override 中设置 `ENABLE_CADDY=false`，并映射 `127.0.0.1:8076`，供 1Panel OpenResty 代理 `/ws`。如果 Xboard 容器没有 `mysqldump`，且你已经在 1Panel 完成数据库备份，应保留 `--skip-db-backup`。
 
 如果 Xboard 容器没有 `mysqldump`，指定 1Panel MySQL 服务名：
 
