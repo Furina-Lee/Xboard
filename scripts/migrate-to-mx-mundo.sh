@@ -7,7 +7,7 @@ set -Eeuo pipefail
 
 REPO_URL="https://github.com/Furina-Lee/Xboard.git"
 BRANCH="feature/mx-mundo-transport"
-BACKEND_REF="884f9a52bb4ad02f523a307eedfb07e93539081b"
+BACKEND_REF="11ad99fa3607d56a2bb361d792e646d432e62cd2"
 ADMIN_REF="a0db13aa0ba9a861f1fbcb4a4ce4e8d612af5e2e"
 ROOT="$(pwd)"
 COMPOSE_FILE=""
