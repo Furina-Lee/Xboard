@@ -35,6 +35,7 @@ services:
     environment:
       - RESOURCE_PROFILE=balanced      # minimal | balanced | performance | auto
       - ENABLE_HORIZON=true
+      - ENABLE_REDIS=true
       - ENABLE_CADDY=false
       - docker=true
 

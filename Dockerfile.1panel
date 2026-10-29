@@ -59,7 +59,7 @@ RUN composer install --no-cache --no-dev --no-security-blocking && \
 # Original 1Panel-style runtime: Octane owns port 7001, with no embedded Caddy.
 ENV ENABLE_WEB=true \
     ENABLE_HORIZON=true \
-    ENABLE_REDIS=false \
+    ENABLE_REDIS=true \
     ENABLE_WS_SERVER=false \
     ENABLE_CADDY=false \
     OCTANE_HOST=0.0.0.0 \
