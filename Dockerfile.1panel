@@ -71,4 +71,6 @@ ENV ENABLE_WEB=true \
     WS_PORT=8076
 
 EXPOSE 7001
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
