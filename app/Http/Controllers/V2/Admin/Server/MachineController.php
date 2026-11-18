@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerMachineLoadHistory;
+use App\Services\MachineSshLinks;
 use App\Services\NodeSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MachineController extends Controller
 {
@@ -17,10 +19,11 @@ class MachineController extends Controller
      */
     public function fetch(Request $request)
     {
+        $sshLinks = MachineSshLinks::fromConfig();
         $machines = ServerMachine::withCount('servers')
             ->orderBy('id')
             ->get()
-            ->map(function (ServerMachine $machine) {
+            ->map(function (ServerMachine $machine) use ($sshLinks) {
                 return [
                     'id' => $machine->id,
                     'name' => $machine->name,
@@ -28,6 +31,7 @@ class MachineController extends Controller
                     'is_active' => $machine->is_active,
                     'last_seen_at' => $machine->last_seen_at,
                     'load_status' => $machine->load_status,
+                    'ssh_url' => $sshLinks[$machine->id] ?? null,
                     'servers_count' => $machine->servers_count,
                     'created_at' => $machine->created_at,
                     'updated_at' => $machine->updated_at,
@@ -62,18 +66,20 @@ class MachineController extends Controller
             return $this->success(true);
         }
 
-        $machine = ServerMachine::create([
-            'name' => $params['name'],
-            'notes' => $params['notes'] ?? null,
-            'is_active' => $params['is_active'] ?? true,
-            'token' => ServerMachine::generateToken(),
-        ]);
+        return DB::transaction(function () use ($request, $params) {
+            $machine = ServerMachine::create([
+                'name' => $params['name'],
+                'notes' => $params['notes'] ?? null,
+                'is_active' => $params['is_active'] ?? true,
+                'token' => ServerMachine::generateToken(),
+            ]);
 
-        return $this->success([
-            'id' => $machine->id,
-            'token' => $machine->token,
-            'install_command' => $this->buildInstallCommand($request, $machine),
-        ]);
+            return $this->success([
+                'id' => $machine->id,
+                'token' => $machine->token,
+                'install_command' => $this->buildInstallCommand($request, $machine),
+            ]);
+        });
     }
 
     /**
@@ -202,14 +208,22 @@ class MachineController extends Controller
     private function buildInstallCommand(Request $request, ServerMachine $machine): string
     {
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
-        $installerUrl = 'https://raw.githubusercontent.com/cedar2025/xboard-node/dev/install.sh';
+        $installerUrl = trim((string) config('machine.installer_url'));
+        $installerVersion = (string) config('machine.installer_version');
+        if (!filter_var($installerUrl, FILTER_VALIDATE_URL) || !preg_match('/\Ahttps:\/\//i', $installerUrl)) {
+            throw new ApiException('XBOARD_NODE_INSTALLER_URL 必须是有效的 HTTPS 地址。');
+        }
+        if (!preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $installerVersion)) {
+            throw new ApiException('XBOARD_NODE_INSTALLER_VERSION 格式无效。');
+        }
 
         return sprintf(
-            'curl -fsSL %s | sudo bash -s -- --mode machine --panel %s --token %s --machine-id %d',
-            $installerUrl,
+            'curl -fsSL --proto =https --proto-redir =https -- %s | sudo bash -s -- --mode machine --panel %s --token %s --machine-id %d --version %s',
+            escapeshellarg($installerUrl),
             escapeshellarg($panelUrl),
             escapeshellarg($machine->token),
-            $machine->id
+            $machine->id,
+            escapeshellarg($installerVersion)
         );
     }
 }
