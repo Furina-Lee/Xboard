@@ -6,14 +6,14 @@
 
 | 镜像 | 用途 | 架构 |
 | --- | --- | --- |
-| `ghcr.io/furina-lee/xboard:latest` | 标准部署，包含 Caddy 和 WebSocket 服务 | AMD64、ARM64 |
-| `ghcr.io/furina-lee/xboard:1panel` | 1Panel，由 Octane 在 7001 提供 HTTP | AMD64、ARM64 |
+| `ghcr.io/furina-lee/xboard:standard` | 标准版，Octane 直接监听 7001，默认关闭独立 WebSocket 服务 | AMD64、ARM64 |
+| `ghcr.io/furina-lee/xboard:full` | 完整版，内置 Caddy，默认启用独立 WebSocket 服务 | AMD64、ARM64 |
 
-默认分支 `master` 由 GitHub Actions 构建。也可使用带完整提交 SHA 的 `latest-<SHA>` 或 `1panel-<SHA>` 标签固定版本。
+默认分支 `master` 由 GitHub Actions 构建。也可使用带完整提交 SHA 的 `standard-<SHA>` 或 `full-<SHA>` 标签固定版本。旧标签 `latest` 和 `1panel` 分别对应完整版和标准版。
 
 ## 全新安装
 
-在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/)，确认 `docker compose version` 可以运行。以下命令使用 SQLite 和内置 Redis。
+在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/)，确认 `docker compose version` 可以运行。以下命令使用标准版、SQLite 和内置 Redis。需要完整版时，在拉取前将 `compose.yaml` 的镜像标签改为 `full`。
 
 ```bash
 mkdir -p ~/xboard

@@ -21,9 +21,11 @@ jobs:
       matrix:
         include:
           - dockerfile: Dockerfile
-            channel: latest
+            channel: full
+            legacy: latest
           - dockerfile: Dockerfile.1panel
-            channel: 1panel
+            channel: standard
+            legacy: 1panel
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +46,9 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ matrix.channel }}
+            type=raw,value=${{ matrix.legacy }}
             type=sha,format=long,prefix=${{ matrix.channel }}-
+            type=sha,format=long,prefix=${{ matrix.legacy }}-
       - name: Set application version
         run: |
           version="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"

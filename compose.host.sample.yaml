@@ -1,6 +1,6 @@
 services:
   xboard:
-    image: ghcr.io/furina-lee/xboard:latest
+    image: ghcr.io/furina-lee/xboard:full
     restart: unless-stopped
     network_mode: host
     volumes:
