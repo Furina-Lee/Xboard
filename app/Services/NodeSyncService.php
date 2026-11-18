@@ -104,6 +104,46 @@ class NodeSyncService
         }
     }
 
+    public static function notifyQuotaExceeded(array $userIds): int
+    {
+        if ($userIds === []) {
+            return 0;
+        }
+
+        $users = User::toBase()
+            ->whereIntegerInRaw('id', $userIds)
+            ->whereRaw('u + d >= transfer_enable')
+            ->where('transfer_enable', '>', 0)
+            ->where('banned', 0)
+            ->get(['id', 'group_id'])
+            ->groupBy('group_id');
+
+        $notified = 0;
+        foreach ($users as $groupId => $groupUsers) {
+            if (!$groupId) {
+                continue;
+            }
+
+            // Older installs can store IDs as either JSON strings or numbers.
+            $servers = Server::whereJsonContains('group_ids', (string) $groupId)
+                ->orWhereJsonContains('group_ids', (int) $groupId)
+                ->get(['id']);
+
+            $removedUsers = $groupUsers->map(fn ($user) => ['id' => $user->id])->values()->all();
+            foreach ($servers as $server) {
+                if (self::isNodeOnline($server->id)) {
+                    self::push($server->id, 'sync.user.delta', [
+                        'action' => 'remove',
+                        'users' => $removedUsers,
+                    ]);
+                    $notified++;
+                }
+            }
+        }
+
+        return $notified;
+    }
+
     /**
      * Full sync: push config + users to a node
      */

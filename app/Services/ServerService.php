@@ -128,11 +128,17 @@ class ServerService
     /**
      * 处理节点流量数据汇报
      */
-    public static function processTraffic(Server $node, array $traffic): void
+    public static function processTraffic(Server $node, array $traffic, ?string $reportId = null): void
     {
-        $data = array_filter($traffic, fn($item) =>
-            is_array($item) && count($item) === 2
-            && is_numeric($item[0]) && is_numeric($item[1])
+        $isByteCount = static fn ($value) =>
+            (is_int($value) || is_string($value))
+            && filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) !== false;
+
+        $data = array_filter($traffic, fn ($item, $uid) =>
+            filter_var($uid, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false
+            && is_array($item) && count($item) === 2 && isset($item[0], $item[1])
+            && $isByteCount($item[0]) && $isByteCount($item[1]),
+            ARRAY_FILTER_USE_BOTH
         );
 
         if (empty($data)) {
@@ -145,7 +151,7 @@ class ServerService
         Cache::put(CacheKey::get("SERVER_{$nodeType}_ONLINE_USER", $nodeId), count($data), 3600);
         Cache::put(CacheKey::get("SERVER_{$nodeType}_LAST_PUSH_AT", $nodeId), time(), 3600);
 
-        (new UserService())->trafficFetch($node, $node->type, $data);
+        (new UserService())->trafficFetch($node, $node->type, $data, $reportId);
     }
 
     /**

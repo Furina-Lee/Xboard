@@ -13,6 +13,7 @@ use App\Services\Plugin\HookManager;
 use App\Services\TrafficResetService;
 use App\Models\TrafficResetLog;
 use App\Utils\Helper;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
@@ -114,8 +115,9 @@ class UserService
         return true;
     }
 
-    public function trafficFetch(Server $server, string $protocol, array $data)
+    public function trafficFetch(Server $server, string $protocol, array $data, ?string $reportId = null)
     {
+        $nodeId = $server->id;
         $server->rate = $server->getCurrentRate();
         $server = $server->toArray();
 
@@ -123,12 +125,41 @@ class UserService
         // Compatible with legacy hook
         list($server, $protocol, $data) = HookManager::filter('traffic.before_process', [$server, $protocol, $data]);
 
-        $timestamp = strtotime(date('Y-m-d'));
-        collect($data)->chunk(1000)->each(function ($chunk) use ($timestamp, $server, $protocol) {
-            TrafficFetchJob::dispatch($server, $chunk->toArray(), $protocol, $timestamp);
-            StatUserJob::dispatch($server, $chunk->toArray(), $protocol, 'd');
-            StatServerJob::dispatch($server, $chunk->toArray(), $protocol, 'd');
-        });
+        if ($data === []) {
+            return;
+        }
+
+        $recorded = DB::transaction(function () use ($nodeId, $reportId, $server, $data) {
+            if ($reportId !== null && !DB::table('node_traffic_reports')->insertOrIgnore([
+                'node_id' => $nodeId,
+                'report_id' => $reportId,
+                'received_at' => time(),
+            ])) {
+                return false;
+            }
+
+            TrafficFetchJob::record($data, $server['rate']);
+            return true;
+        }, 3);
+
+        // Accounting has committed. A notification or statistics failure must
+        // not make the node retry bytes that were already charged.
+        try {
+            NodeSyncService::notifyQuotaExceeded(array_keys($data));
+        } catch (\Throwable $error) {
+            report($error);
+        }
+
+        if ($recorded) {
+            foreach (array_chunk($data, 1000, true) as $chunk) {
+                try {
+                    StatUserJob::dispatch($server, $chunk, $protocol, 'd');
+                    StatServerJob::dispatch($server, $chunk, $protocol, 'd');
+                } catch (\Throwable $error) {
+                    report($error);
+                }
+            }
+        }
     }
 
     /**

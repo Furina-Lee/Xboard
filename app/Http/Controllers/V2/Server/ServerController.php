@@ -48,11 +48,6 @@ class ServerController extends Controller
 
         ServerService::touchNode($node);
 
-        $traffic = $request->input('traffic');
-        if (is_array($traffic) && !empty($traffic)) {
-            ServerService::processTraffic($node, $traffic);
-        }
-
         $alive = $request->input('alive');
         if (is_array($alive) && !empty($alive)) {
             ServerService::processAlive($node->id, $alive);
@@ -71,6 +66,12 @@ class ServerController extends Controller
         $metrics = $request->input('metrics');
         if (is_array($metrics) && !empty($metrics)) {
             ServerService::updateMetrics($node, $metrics);
+        }
+
+        $traffic = $request->input('traffic');
+        if (is_array($traffic) && $traffic !== []) {
+            $request->validate(['report_id' => ['sometimes', 'required', 'string', 'regex:/\A[a-f0-9]{32}\z/']]);
+            ServerService::processTraffic($node, $traffic, $request->input('report_id'));
         }
 
         return response()->json(['data' => true]);

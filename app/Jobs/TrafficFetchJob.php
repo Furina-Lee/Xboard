@@ -31,21 +31,26 @@ class TrafficFetchJob implements ShouldQueue
 
     public function handle(): void
     {
-        $userIds = array_keys($this->data);
+        self::record($this->data, $this->server['rate']);
 
-        foreach ($this->data as $uid => $v) {
+        if ($this->data !== []) {
+            Redis::sadd('traffic:pending_check', ...array_keys($this->data));
+        }
+    }
+
+    public static function record(array $data, float $rate): void
+    {
+        ksort($data, SORT_NUMERIC);
+
+        foreach ($data as $uid => $v) {
             User::where('id', $uid)
                 ->incrementEach(
                     [
-                        'u' => $v[0] * $this->server['rate'],
-                        'd' => $v[1] * $this->server['rate'],
+                        'u' => $v[0] * $rate,
+                        'd' => $v[1] * $rate,
                     ],
                     ['t' => time()]
                 );
-        }
-
-        if (!empty($userIds)) {
-            Redis::sadd('traffic:pending_check', ...$userIds);
         }
     }
 }
