@@ -4,14 +4,24 @@
 
 ## 管理后台主题
 
-在管理后台右下角打开 **后台主题**，选择 **简约主题**、**原始主题**或已安装的自定义主题。切换即时生效，偏好保存在当前浏览器。选择 **跟随站点设置** 可清除个人偏好，重新使用站点默认主题。站点默认是简约版，可在部署的 `.env` 设置 `XBOARD_ADMIN_THEME=default` 或自定义主题 ID。修改默认值后刷新已有的 Laravel 配置缓存并重启应用。
+管理员登录后，在右下角打开 **后台主题**，选择 **简约主题**、**原始主题**或已安装主题，再点 **应用到所有管理员**。选项保存在服务器中，其他管理员重新打开或刷新后台后会看到同一主题。首次设置前使用 `XBOARD_ADMIN_THEME` 指定的部署默认值，未指定时为简约主题。
 
-### 创建并启用自己的主题
+### 创建并上传自己的主题
 
-1. 在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css` 到 `themes/my-theme/theme.css`。主题 ID 以小写字母开头，其余字符可用小写字母、数字和连字符。`default` 保留给原始主题。
-2. 把浅色和深色选择器中的 `data-admin-theme="minimal"` 都替换为 `data-admin-theme="my-theme"`，调整配色、圆角和动画变量。可用仓库的 `preview.html` 预览，将其中的主题 ID 和 CSS 路径改成自己的。
-3. 提交主题文件，在 Xboard 主仓库更新 `public/assets/admin` 子模块指针，并构建、部署新镜像。运行时主题文件位于 `public/assets/admin/themes/my-theme/theme.css`。后台扫描该目录，发现主题后会自动加入下拉列表。
-4. 重新打开后台，在 **后台主题** 选择 `my-theme`。如需把它设为所有浏览器的站点默认值，设置 `XBOARD_ADMIN_THEME=my-theme`。已有个人选择的浏览器可以切回 **跟随站点设置**。
+1. 保存以下内容为 `my-theme.json`，修改 ID 和配色。浅色与深色各至少填一项，未填写的颜色继承简约主题。颜色格式为整数 HSL 通道（色相 0–360，饱和度和亮度 0%–100%）。
+
+   ```json
+   {
+     "id": "my-theme",
+     "light": { "primary": "163 69% 26%", "primary-foreground": "0 0% 100%" },
+     "dark": { "primary": "153 56% 69%", "primary-foreground": "163 44% 11%" }
+   }
+   ```
+
+2. 在 **后台主题** 选择文件，点击 **校验并保存**。服务端检查文件大小（最多 4 KB）、JSON 结构、主题 ID、重复名称、允许的颜色变量与数值范围。校验通过后才会把色板写入数据库。上传支持 JSON 色板，样式表、脚本、归档和外部资源地址均不接受。
+3. 在下拉列表中选择新主题，再点 **应用到所有管理员**。上传本身不会切换主题。
+
+开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。
 
 ## Docker 镜像
 

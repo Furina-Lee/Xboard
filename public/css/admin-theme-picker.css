@@ -36,3 +36,25 @@
   outline: 2px solid hsl(var(--ring, 217 70% 43%));
   outline-offset: 2px;
 }
+
+.xboard-admin-theme-picker form + form {
+  margin-top: .75rem;
+  border-top: 1px solid hsl(var(--border, 214 20% 78%));
+}
+
+.xboard-admin-theme-picker :is(input, button) {
+  display: block;
+  max-width: 100%;
+  margin-top: .4rem;
+}
+
+.xboard-admin-theme-picker button {
+  padding: .35rem .6rem;
+  border-radius: .4rem;
+  background: hsl(var(--primary, 163 69% 26%));
+  color: hsl(var(--primary-foreground, 0 0% 100%));
+}
+
+.xboard-admin-theme-picker button:disabled { opacity: .65; }
+.xboard-admin-theme-picker p:empty { display: none; }
+.xboard-admin-theme-picker p { margin-top: .6rem; max-width: 18rem; }

@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 @php
-    $adminThemeUrls = [];
-    if (is_file(public_path('assets/admin/themes/base.css'))) {
-        foreach (glob(public_path('assets/admin/themes/*/theme.css')) ?: [] as $themeFile) {
-            $id = basename(dirname($themeFile));
-            if ($id !== 'default' && preg_match('/\A[a-z][a-z0-9-]*\z/', $id) && is_readable($themeFile)) {
-                $adminThemeUrls[$id] = asset("assets/admin/themes/{$id}/theme.css");
-            }
-        }
-    }
-    ksort($adminThemeUrls);
-    $configuredTheme = config('app.admin_theme', 'minimal');
-    $adminTheme = is_string($configuredTheme) && isset($adminThemeUrls[$configuredTheme])
-        ? $configuredTheme : 'default';
+    $adminThemes = app(\App\Services\AdminThemeService::class);
+    $selectedAdminTheme = $adminThemes->selected();
+    $builtinAdminThemes = $adminThemes->builtin();
+    $uploadedAdminTheme = isset($adminThemes->uploaded()[$selectedAdminTheme]);
+    $adminTheme = $uploadedAdminTheme ? 'minimal' : $selectedAdminTheme;
+    $adminThemeFile = $builtinAdminThemes[$adminTheme] ?? null;
 @endphp
-<html lang="en" @if($adminTheme !== 'default') data-admin-theme="{{ $adminTheme }}" @endif>
+<html lang="en" @if($adminThemeFile) data-admin-theme="{{ $adminTheme }}" @endif>
 
 <head>
   <meta charset="UTF-8" />
@@ -92,29 +85,35 @@
     <script src="/assets/admin/locales/zh-CN.js"></script>
     <script src="/assets/admin/locales/ko-KR.js"></script>
   @endif
-  @if($adminThemeUrls)
+  @if($adminThemeFile)
     <link rel="stylesheet" href="{{ asset('assets/admin/themes/base.css') }}" />
-    <link id="xboard-admin-theme-css" rel="stylesheet" @if($adminTheme !== 'default') href="{{ $adminThemeUrls[$adminTheme] }}" @endif />
-    <script src="{{ asset('js/admin-theme-picker.js') }}" data-themes="{{ json_encode($adminThemeUrls, JSON_THROW_ON_ERROR) }}" data-site-theme="{{ $adminTheme }}"></script>
-    <link rel="stylesheet" href="{{ asset('css/admin-theme-picker.css') }}" />
+    <link rel="stylesheet" href="{{ asset($adminThemeFile) }}" />
+    @if($uploadedAdminTheme)
+      <style>{!! $adminThemes->css($selectedAdminTheme) !!}</style>
+    @endif
   @endif
+  <link rel="stylesheet" href="{{ asset('css/admin-theme-picker.css') }}" />
+  <script src="{{ asset('js/admin-theme-picker.js') }}" defer></script>
 </head>
 
 <body>
   <div id="root"></div>
-  @if($adminThemeUrls)
-    <details class="xboard-admin-theme-picker" id="xboard-admin-theme-picker" hidden>
-      <summary>后台主题</summary>
-      <label for="xboard-admin-theme-choice">当前浏览器的主题</label>
-      <select id="xboard-admin-theme-choice">
-        <option value="">跟随站点设置</option>
-        <option value="default">原始主题</option>
-        @foreach($adminThemeUrls as $id => $url)
-          <option value="{{ $id }}">{{ $id === 'minimal' ? '简约主题' : $id }}</option>
-        @endforeach
-      </select>
-    </details>
-  @endif
+  <details class="xboard-admin-theme-picker" id="xboard-admin-theme-picker"
+    data-endpoint="{{ route('admin-theme.index', [], false) }}"
+    data-selected="{{ $selectedAdminTheme }}" hidden>
+    <summary>后台主题</summary>
+    <form id="xboard-admin-theme-select">
+      <label for="xboard-admin-theme-choice">所有管理员共用的主题</label>
+      <select id="xboard-admin-theme-choice" name="id" required></select>
+      <button type="submit">应用到所有管理员</button>
+    </form>
+    <form id="xboard-admin-theme-upload">
+      <label for="xboard-admin-theme-file">上传主题（JSON，最多 4 KB）</label>
+      <input id="xboard-admin-theme-file" name="theme" type="file" accept=".json,application/json" required>
+      <button type="submit">校验并保存</button>
+    </form>
+    <p id="xboard-admin-theme-status" role="status"></p>
+  </details>
 </body>
 
 </html>

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Routes\V2;
 
+use App\Http\Controllers\V2\Admin\AdminThemeController;
 use App\Http\Controllers\V2\Admin\ConfigController;
 use App\Http\Controllers\V2\Admin\MailTemplateController;
 use App\Http\Controllers\V2\Admin\PlanController;
@@ -30,6 +31,10 @@ class AdminRoute
             'prefix' => admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->get('/admin-theme', [AdminThemeController::class, 'index'])->name('admin-theme.index');
+            $router->post('/admin-theme/select', [AdminThemeController::class, 'select']);
+            $router->post('/admin-theme/upload', [AdminThemeController::class, 'upload']);
+
             // Config
             $router->group([
                 'prefix' => 'config'
