@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerMachineLoadHistory;
-use App\Services\MachineSshLinks;
 use App\Services\NodeInstallerSettings;
 use App\Services\NodeSyncService;
 use Illuminate\Http\Request;
@@ -20,11 +19,10 @@ class MachineController extends Controller
      */
     public function fetch(Request $request)
     {
-        $sshLinks = MachineSshLinks::fromConfig();
         $machines = ServerMachine::withCount('servers')
             ->orderBy('id')
             ->get()
-            ->map(function (ServerMachine $machine) use ($sshLinks) {
+            ->map(function (ServerMachine $machine) {
                 return [
                     'id' => $machine->id,
                     'name' => $machine->name,
@@ -32,7 +30,6 @@ class MachineController extends Controller
                     'is_active' => $machine->is_active,
                     'last_seen_at' => $machine->last_seen_at,
                     'load_status' => $machine->load_status,
-                    'ssh_url' => $sshLinks[$machine->id] ?? null,
                     'servers_count' => $machine->servers_count,
                     'created_at' => $machine->created_at,
                     'updated_at' => $machine->updated_at,

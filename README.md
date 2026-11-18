@@ -27,20 +27,7 @@
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
-## 机器与节点的 SSH 入口
-
-1. 在 Apache Guacamole 创建 SSH 连接，配置 SSH 主机密钥校验，并为有权限的 Guacamole 账号授权。
-2. 用该账号打开连接，从地址栏复制 `#/client/` 后面的客户端标识。若标识包含百分号转义，先解码一次。标识可能包含数据源信息，应使用浏览器地址中的标识。
-3. 在 Xboard 的机器管理列表读取该机器的 `SID`。在部署目录的 `.env` 配置 HTTPS 网关和以 SID 为键的 JSON 对象：
-
-   ```dotenv
-   XBOARD_SSH_GATEWAY_URL=https://guacamole.example.com/guacamole
-   XBOARD_SSH_CONNECTIONS='{"12":"MTIAYwBteXNxbA"}'
-   ```
-
-4. 在部署目录运行 `docker compose exec xboard php artisan config:clear`，然后运行 `docker compose restart xboard`。如部署使用多个 Compose 文件，请沿用相同的 `-f` 参数。
-
-配置了连接的机器会显示 **SSH**，节点管理的部署方式列也会在所属机器旁显示入口。浏览器会在新标签页打开 Guacamole，由 Guacamole 处理登录、授权和 SSH 会话。
+## 节点安装
 
 机器安装命令默认使用 [Furina-Lee/Xboard-Node](https://github.com/Furina-Lee/Xboard-Node) 的 `v1.13-furina.2` 安装脚本和二进制。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。地址使用兼容脚本的 HTTPS 原始文件地址，版本使用对应的发布标签。清空字段并保存会恢复部署默认值，可在 `.env` 中设置同名变量覆盖默认值。自有脚本需要支持机器模式、`--machine-id` 和 `--version`，并从预期仓库下载二进制。
 
