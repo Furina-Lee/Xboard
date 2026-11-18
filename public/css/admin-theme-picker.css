@@ -1,0 +1,38 @@
+.xboard-admin-theme-picker {
+  position: fixed;
+  z-index: 40;
+  inset-inline-end: max(1rem, env(safe-area-inset-right));
+  inset-block-end: max(1rem, env(safe-area-inset-bottom));
+  max-width: calc(100vw - 2rem);
+  padding: .55rem .8rem;
+  border: 1px solid hsl(var(--border, 214 20% 78%));
+  border-radius: .75rem;
+  background: hsl(var(--popover, 0 0% 100%));
+  color: hsl(var(--popover-foreground, 220 30% 15%));
+  box-shadow: 0 4px 18px rgb(0 0 0 / .12);
+  font-size: .875rem;
+}
+
+.xboard-admin-theme-picker summary {
+  cursor: pointer;
+}
+
+.xboard-admin-theme-picker label {
+  display: block;
+  margin: .7rem 0 .35rem;
+}
+
+.xboard-admin-theme-picker select {
+  width: 100%;
+  min-height: 2rem;
+  padding-inline: .4rem;
+  border: 1px solid hsl(var(--input, 214 20% 68%));
+  border-radius: .4rem;
+  background: hsl(var(--popover, 0 0% 100%));
+  color: inherit;
+}
+
+.xboard-admin-theme-picker :is(summary, select):focus-visible {
+  outline: 2px solid hsl(var(--ring, 217 70% 43%));
+  outline-offset: 2px;
+}
