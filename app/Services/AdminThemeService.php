@@ -40,7 +40,18 @@ class AdminThemeService
     public function selected(): string
     {
         $selected = admin_setting('admin_theme_selected', config('app.admin_theme', 'minimal'));
+        // Older settings stored IDs directly, so JSON literals may already be decoded.
+        $selected = match (true) {
+            is_array($selected) => $selected['id'] ?? null,
+            is_bool($selected) => $selected ? 'true' : 'false',
+            default => $selected,
+        };
         return is_string($selected) && in_array($selected, $this->ids(), true) ? $selected : 'default';
+    }
+
+    public function select(string $id): void
+    {
+        admin_setting(['admin_theme_selected' => ['id' => $id]]);
     }
 
     public function ids(): array

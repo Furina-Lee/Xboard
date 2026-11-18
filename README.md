@@ -21,7 +21,7 @@
 2. 在 **后台主题** 选择文件，点击 **校验并保存**。服务端检查文件大小（最多 4 KB）、JSON 结构、主题 ID、重复名称、允许的颜色变量与数值范围。校验通过后才会把色板写入数据库。上传支持 JSON 色板，样式表、脚本、归档和外部资源地址均不接受。
 3. 在下拉列表中选择新主题，再点 **应用到所有管理员**。上传本身不会切换主题。
 
-开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。
+开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
 ## Docker 镜像
 

@@ -17,7 +17,7 @@ class AdminThemeController extends Controller
     public function select(Request $request, AdminThemeService $themes)
     {
         $data = $request->validate(['id' => ['required', 'string', Rule::in($themes->ids())]]);
-        admin_setting(['admin_theme_selected' => $data['id']]);
+        $themes->select($data['id']);
 
         return $this->index($themes);
     }
