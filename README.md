@@ -62,7 +62,7 @@ curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/mi
 bash migrate-to-mx-mundo.sh --upgrade --health-url http://127.0.0.1:7001/
 ```
 
-脚本识别现有版本，备份后拉取同版最新镜像，执行更新并检查 HTTP。升级失败会尝试恢复旧镜像。升级保持外部代理运行。自定义 Compose 文件或 override 可通过 `--compose` 和 `--override` 指定。
+脚本识别现有版本，备份后拉取同版最新镜像，执行更新并检查 HTTP。首次启动默认最多等待 600 秒，可用 `--health-timeout 900` 延长到 15 分钟。超时时会在快照目录保存 `startup.log`。升级失败会尝试恢复旧镜像。升级保持外部代理运行。自定义 Compose 文件或 override 可通过 `--compose` 和 `--override` 指定。
 
 - [已有部署迁移补充说明](./docs/en/installation/migrate-existing-compose.md)
 - [GitHub Actions 构建记录](https://github.com/Furina-Lee/Xboard/actions/workflows/docker-publish.yml)
