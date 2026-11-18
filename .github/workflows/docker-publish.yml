@@ -48,7 +48,7 @@ jobs:
       - name: Set application version
         run: |
           version="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
-          sed -i -E "s/('version' => ')[^']+('/\1${version}\2/" config/app.php
+          sed -i -E "s/('version' => ')[^']+(')/\1${version}\2/" config/app.php
       - uses: docker/build-push-action@v6
         with:
           context: .
