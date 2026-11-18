@@ -27,6 +27,12 @@
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
+## 节点安装
+
+机器安装命令默认使用 [Furina-Lee/Xboard-Node](https://github.com/Furina-Lee/Xboard-Node) 的 `v1.13-furina.2` 安装脚本和二进制。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。地址使用兼容脚本的 HTTPS 原始文件地址，版本使用对应的发布标签。清空字段并保存会恢复部署默认值，可在 `.env` 中设置同名变量覆盖默认值。自有脚本需要支持机器模式、`--machine-id` 和 `--version`，并从预期仓库下载二进制。
+
+Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.2`。机器模式使用面板地址、SID 和机器 Token，分别对应 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`，也可以在 Compose 挂载的配置文件中填写。面板中的安装地址和版本字段用于 systemd 安装命令。参见 [节点 Docker Compose 说明](https://github.com/Furina-Lee/Xboard-Node/tree/compose)。
+
 ## Docker 镜像
 
 两个版本使用相同的 Xboard 面板代码，均支持 MX/Mundo、内置 Redis 和 Linux AMD64 / ARM64。区别在于 HTTP 入口和节点 WebSocket 的默认配置。
