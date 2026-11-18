@@ -273,7 +273,7 @@ backup_mysql() {
     -e "MYSQL_PWD=$DB_PASSWORD" \
     --entrypoint /bin/sh "$dump_runner" -c \
     'dump="$(command -v mariadb-dump || command -v mysqldump)" || { echo "No MySQL dump client in the selected service" >&2; exit 127; }; \
-     "$dump" --single-transaction --quick --routines --triggers \
+     "$dump" --no-tablespaces --single-transaction --quick --routines --triggers \
        -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USERNAME" "$DB_DATABASE"' \
     | gzip -c > "$dump"
   [[ -s "$dump" ]] || die "MySQL dump is empty"
