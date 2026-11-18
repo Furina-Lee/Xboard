@@ -11,14 +11,7 @@
 #   - Redis: choose the built-in Redis (already provided by this image)
 services:
   xboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.1panel
-      args:
-        REPO_URL: https://github.com/Furina-Lee/Xboard.git
-        BRANCH_NAME: feature/mx-mundo-transport
-        CACHEBUST: mx-mundo
-    image: xboard:mx-mundo
+    image: ghcr.io/furina-lee/xboard:1panel
     restart: unless-stopped
     ports:
       - "7001:7001"

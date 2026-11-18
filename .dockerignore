@@ -1,3 +1,8 @@
+/.git
+**/.git
+/.github
+/.docker/.data/**
+/storage/logs/*.log
 /node_modules
 /config/v2board.php
 /public/hot
@@ -15,7 +20,6 @@ Homestead.yaml
 npm-debug.log
 yarn-error.log
 composer.phar
-composer.lock
 yarn.lock
 docker-compose.yml
 .DS_Store
