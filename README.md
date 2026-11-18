@@ -29,7 +29,7 @@
 
 ## 节点安装
 
-机器安装命令默认使用 [Furina-Lee/Xboard-Node](https://github.com/Furina-Lee/Xboard-Node) 的 `v1.13-furina.6` 安装脚本和二进制。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。地址使用兼容脚本的 HTTPS 原始文件地址，版本使用对应的发布标签。清空字段并保存会恢复部署默认值，可在 `.env` 中设置同名变量覆盖默认值。自有脚本需要支持机器模式、`--machine-id` 和 `--version`，并从预期仓库下载二进制。
+机器安装命令默认使用 [Furina-Lee/Xboard-Node](https://github.com/Furina-Lee/Xboard-Node) 的安装脚本，由脚本下载该仓库的最新正式发布。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。安装地址须为兼容脚本的 HTTPS 原始文件地址。需要固定版本时，可填入对应的发布标签，面板会将其作为 `--version` 参数传给脚本。清空字段并保存可恢复部署默认值。如果在 `.env` 中设置过同名变量，也需清空相应变量才能恢复内置默认值。自有脚本须支持机器模式及 `--machine-id`，启用版本覆盖时还须支持 `--version`。
 
 Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.6`。机器模式使用面板地址、SID 和机器 Token，分别对应 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`，也可以在 Compose 挂载的配置文件中填写。面板中的安装地址和版本字段用于 systemd 安装命令。参见 [节点 Docker Compose 说明](https://github.com/Furina-Lee/Xboard-Node/tree/compose)。
 

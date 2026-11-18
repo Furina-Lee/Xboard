@@ -211,17 +211,16 @@ class MachineController extends Controller
         if (!filter_var($installerUrl, FILTER_VALIDATE_URL) || !preg_match('/\Ahttps:\/\//i', $installerUrl)) {
             throw new ApiException('XBOARD_NODE_INSTALLER_URL 必须是有效的 HTTPS 地址。');
         }
-        if (!preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $installerVersion)) {
+        if ($installerVersion !== '' && !preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $installerVersion)) {
             throw new ApiException('XBOARD_NODE_INSTALLER_VERSION 格式无效。');
         }
 
         return sprintf(
-            'curl -fsSL --proto =https --proto-redir =https -- %s | sudo bash -s -- --mode machine --panel %s --token %s --machine-id %d --version %s',
+            'curl -fsSL --proto =https --proto-redir =https -- %s | sudo bash -s -- --mode machine --panel %s --token %s --machine-id %d',
             escapeshellarg($installerUrl),
             escapeshellarg($panelUrl),
             escapeshellarg($machine->token),
-            $machine->id,
-            escapeshellarg($installerVersion)
-        );
+            $machine->id
+        ) . ($installerVersion === '' ? '' : ' --version ' . escapeshellarg($installerVersion));
     }
 }
