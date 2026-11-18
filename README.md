@@ -4,35 +4,54 @@
 
 ## Docker 镜像
 
-| 镜像 | 用途 | 架构 |
-| --- | --- | --- |
-| `ghcr.io/furina-lee/xboard:standard` | 标准版，Octane 直接监听 7001，默认关闭独立 WebSocket 服务 | AMD64、ARM64 |
-| `ghcr.io/furina-lee/xboard:full` | 完整版，内置 Caddy，默认启用独立 WebSocket 服务 | AMD64、ARM64 |
+两个版本使用相同的 Xboard 面板代码，均支持 MX/Mundo、内置 Redis 和 Linux AMD64 / ARM64。区别在于 HTTP 入口和节点 WebSocket 的默认配置。
 
-默认分支 `master` 由 GitHub Actions 构建。也可使用带完整提交 SHA 的 `standard-<SHA>` 或 `full-<SHA>` 标签固定版本。旧标签 `latest` 和 `1panel` 分别对应完整版和标准版。
+| | 标准版 | 完整版 |
+| --- | --- | --- |
+| 镜像 | `ghcr.io/furina-lee/xboard:standard` | `ghcr.io/furina-lee/xboard:full` |
+| HTTP 入口 | Octane 直接监听 `7001` | Caddy 监听 `7001`，转发给 Octane |
+| 节点 WebSocket | 独立服务默认关闭 | 独立服务默认开启，由 Caddy 转发 `/ws`，沿用 `7001` |
+| 适用场景 | 1Panel OpenResty、aaPanel Nginx 等外部反向代理，以及直接访问面板 | 需要默认启用 Xboard-Node WebSocket 入口的部署 |
+
+完整版的 Caddy 在容器内提供 HTTP 转发。公网 HTTPS 可交由宿主机上的反向代理处理。WebSocket 入口与 MX 节点兼容性还取决于节点端实现。
+
+GitHub Actions 从 `master` 构建镜像。可用 `standard-<SHA>` 或 `full-<SHA>` 固定版本。兼容标签 `1panel` 对应标准版，`latest` 对应完整版。
 
 ## 全新安装
 
-在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/)，确认 `docker compose version` 可以运行。以下命令使用标准版、SQLite 和内置 Redis。需要完整版时，在拉取前将 `compose.yaml` 的镜像标签改为 `full`。
+在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/) 及 `curl`。以下两条命令任选其一，在终端执行。安装器会使用空目录、SQLite 和内置 Redis，并提示输入管理员邮箱。
+
+**标准版**
 
 ```bash
-mkdir -p ~/xboard
-cd ~/xboard
-curl -fL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/compose.sample.yaml -o compose.yaml
-touch .env
-docker compose pull
-docker compose run --rm -e ENABLE_SQLITE=true -e ENABLE_REDIS=true xboard php artisan xboard:install
-docker compose up -d
-docker compose ps
+installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- standard "$HOME/xboard"
 ```
 
-按提示填写管理员邮箱，保存安装程序输出的管理员凭据和后台路径。浏览器访问 `http://服务器地址:7001`，正式使用时由反向代理提供 HTTPS。排查启动问题可运行 `docker compose logs --tail=100 xboard`。
+**完整版**
+
+```bash
+installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- full "$HOME/xboard"
+```
+
+保存安装程序输出的管理员凭据和后台路径，访问 `http://服务器地址:7001`。排查启动问题可在部署目录执行 `docker compose logs --tail=100 xboard`。
 
 ### MySQL 和面板管理
 
-- **MySQL**：在安装命令中去掉 `-e ENABLE_SQLITE=true`，选择 MySQL，填写容器可访问的数据库地址和凭据。
-- **1Panel**：下载 [1Panel Compose 模板](./compose.1panel.sample.yaml) 保存为 `compose.yaml`。确认数据库容器接入 `1panel-network`，安装时填写数据库容器名。使用 1Panel 的反向代理指向宿主机 `127.0.0.1:7001`。
-- **aaPanel**：使用标准 Compose 模板，站点反向代理指向宿主机 `127.0.0.1:7001`。需要宿主机网络时，使用 [host 模板](./compose.host.sample.yaml)。
+- **1Panel**：将安装命令中的 `standard` 换成 `1panel`。安装器使用[专用 Compose 模板](./compose.1panel.sample.yaml)，连接外部 Docker 网络 `1panel-network`。选择 MySQL 时填写该网络上的数据库容器名。反向代理指向宿主机 `127.0.0.1:7001`。
+- **其他 MySQL 部署**：按 [Compose 手动安装教程](./docs/en/installation/docker-compose.md) 初始化，安装时选择 MySQL。
+- **aaPanel**：使用标准版并将站点反向代理指向 `127.0.0.1:7001`。需要宿主机网络时，可使用 [host 模板](./compose.host.sample.yaml)。
+
+## 迁移已有 Docker + MySQL 部署
+
+在现有部署目录下载脚本并预览，确认输出的 Compose 文件、服务名、镜像、已有 override 和备份目录。标准版示例：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/migrate-to-mx-mundo.sh -o migrate-to-mx-mundo.sh
+bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:7001/ --dry-run
+bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:7001/ --apply
+```
+
+需要保留 Caddy 和默认 WebSocket 入口时，在预览和执行时都传 `--edition full`。迁移会备份 MySQL 和部署配置、拉取预构建镜像并更新数据库。基础 Compose 和 `.env` 保持原样。迁移后按脚本打印的 Compose 命令启动，保留命令中的所有 `-f` 文件。详细参数及回滚见[迁移教程](./docs/en/installation/migrate-existing-compose.md)。
 
 ## 更新现有 Docker 部署
 
@@ -45,7 +64,7 @@ docker compose ps
 docker compose logs --tail=100 xboard
 ```
 
-从自建镜像切换到 GHCR 时，在正在使用的 Compose 文件（含 override）中，把 Xboard 服务的 `image:` 改成对应的 GHCR 镜像并移除该服务的 `build:`。先用 `docker compose config --images` 核对最终生效的镜像，再执行更新。保留现有数据库、挂载、网络和端口。已有部署无需运行 `xboard:install`。
+如已用迁移脚本生成 override，执行这些命令时加上脚本打印的全部 `-f` 参数。用 `docker compose config --images` 核对生效的镜像。已有部署无需运行 `xboard:install`。
 
 - [已有部署迁移补充说明](./docs/en/installation/migrate-existing-compose.md)
 - [GitHub Actions 构建记录](https://github.com/Furina-Lee/Xboard/actions/workflows/docker-publish.yml)
