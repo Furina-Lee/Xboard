@@ -11,6 +11,7 @@ SERVICE="xboard"
 MYSQL_SERVICE=""
 BACKUP_DIR=""
 HEALTH_URL=""
+HEALTH_TIMEOUT=600
 IMAGE=""
 EDITION=""
 BASE_OVERRIDE=""
@@ -40,6 +41,7 @@ Options:
   --mysql-service NAME      Compose service containing mysqldump (default: Xboard service)
   --backup-dir DIR          Snapshot destination (default: sibling backup directory)
   --health-url URL          URL to check after startup
+  --health-timeout SEC      Startup grace period in seconds (default: 600)
   --edition standard|full   Published edition (interactive selection if omitted)
   --image IMAGE             Override the published image reference
   --override FILE           Existing Compose override (auto-detects compose.mx-mundo.override.yaml)
@@ -74,6 +76,7 @@ while [[ $# -gt 0 ]]; do
     --mysql-service) MYSQL_SERVICE="$2"; shift 2 ;;
     --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
     --health-url) HEALTH_URL="$2"; shift 2 ;;
+    --health-timeout) HEALTH_TIMEOUT="${2:?--health-timeout needs a value}"; shift 2 ;;
     --image) IMAGE="$2"; shift 2 ;;
     --edition) EDITION="${2:?--edition needs a value}"; shift 2 ;;
     --override) BASE_OVERRIDE="${2:?--override needs a path}"; shift 2 ;;
@@ -90,6 +93,8 @@ while [[ $# -gt 0 ]]; do
     *) die "Unknown argument: $1" ;;
   esac
 done
+
+[[ "$HEALTH_TIMEOUT" =~ ^[1-9][0-9]{0,5}$ ]] || die "--health-timeout must be a positive number of seconds"
 
 if [[ "$MODE" == "rollback" ]]; then
   [[ -d "$BACKUP_DIR" && -f "$BACKUP_DIR/metadata.env" ]] || die "Snapshot metadata.env is missing"
@@ -390,10 +395,16 @@ start_and_check() {
   local target_compose=("${COMPOSE[@]}" -f "$OVERRIDE")
   log "starting target service"
   "${target_compose[@]}" up -d --no-deps --no-build --pull never "$SERVICE" || return 1
-  for _ in $(seq 1 30); do
+  local started=$SECONDS deadline=$((SECONDS + HEALTH_TIMEOUT)) next_notice=$((SECONDS + 30))
+  local remaining probe_timeout
+  log "waiting up to ${HEALTH_TIMEOUT}s for HTTP readiness"
+  while (( SECONDS < deadline )); do
+    remaining=$((deadline - SECONDS))
+    (( remaining > 0 )) || break
+    probe_timeout=$((remaining < 5 ? remaining : 5))
     if "${target_compose[@]}" ps --status running --services | grep -Fxq "$SERVICE"; then
       if [[ -n "$HEALTH_URL" ]]; then
-        if curl -fsSL --max-time 5 "$HEALTH_URL" >/dev/null; then
+        if curl -fsL --max-time "$probe_timeout" "$HEALTH_URL" >/dev/null 2>&1; then
           log "health check passed: $HEALTH_URL"
           return 0
         fi
@@ -403,13 +414,23 @@ start_and_check() {
             : (getenv("OCTANE_PORT") ?: 7001);
         $context = stream_context_create(["http" => ["timeout" => 3]]);
         exit(@file_get_contents("http://127.0.0.1:$port/", false, $context) === false ? 1 : 0);
-      '; then
+      ' >/dev/null 2>&1; then
         log "internal HTTP health check passed"
         return 0
       fi
     fi
-    sleep 2
-done
+    if (( SECONDS >= next_notice )); then
+      log "still waiting for HTTP readiness ($((SECONDS - started))s elapsed, timeout ${HEALTH_TIMEOUT}s)"
+      next_notice=$((SECONDS + 30))
+    fi
+    remaining=$((deadline - SECONDS))
+    if (( remaining > 0 )); then
+      sleep "$((remaining < 5 ? remaining : 5))"
+    fi
+  done
+  warn "HTTP readiness timed out after ${HEALTH_TIMEOUT}s"
+  "${target_compose[@]}" logs --no-color --tail=100 "$SERVICE" > "$BACKUP_DIR/startup.log" 2>&1 || true
+  warn "Container startup logs saved to $BACKUP_DIR/startup.log"
   return 1
 }
 
