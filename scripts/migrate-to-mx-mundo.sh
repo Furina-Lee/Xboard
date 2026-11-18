@@ -140,7 +140,7 @@ if [[ "$MODE" != rollback ]]; then
     [[ ! -f "$OVERRIDE" ]] || current_compose+=(-f "$OVERRIDE")
     current_image="$("${current_compose[@]}" config --images "$SERVICE")"
     case "$current_image" in
-      ghcr.io/furina-lee/xboard:standard|ghcr.io/furina-lee/xboard:1panel|ghcr.io/furina-lee/xboard:standard-*) current_edition=standard ;;
+      xboard:mx-mundo-1panel|ghcr.io/furina-lee/xboard:standard|ghcr.io/furina-lee/xboard:1panel|ghcr.io/furina-lee/xboard:standard-*) current_edition=standard ;;
       ghcr.io/furina-lee/xboard:full|ghcr.io/furina-lee/xboard:latest|ghcr.io/furina-lee/xboard:full-*) current_edition=full ;;
       *) die "Cannot infer edition from $current_image. Migrate to a published edition first." ;;
     esac
