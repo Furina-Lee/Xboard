@@ -41,30 +41,28 @@ installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/mast
 - **其他 MySQL 部署**：按 [Compose 手动安装教程](./docs/en/installation/docker-compose.md) 初始化，安装时选择 MySQL。
 - **aaPanel**：使用标准版并将站点反向代理指向 `127.0.0.1:7001`。需要宿主机网络时，可使用 [host 模板](./compose.host.sample.yaml)。
 
-## 迁移已有 Docker + MySQL 部署
+## 迁移已有 Docker 部署
 
-在现有部署目录下载脚本并预览，确认输出的 Compose 文件、服务名、镜像、已有 override 和备份目录。标准版示例：
+在现有部署目录下载脚本并预览，确认输出的 Compose 文件、服务名、镜像、已有 override 和备份目录。在终端省略 `--edition` 会提示选择标准版或完整版。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/migrate-to-mx-mundo.sh -o migrate-to-mx-mundo.sh
-bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:7001/ --dry-run
-bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:7001/ --apply
+bash migrate-to-mx-mundo.sh --health-url http://127.0.0.1:7001/ --dry-run
+bash migrate-to-mx-mundo.sh --health-url http://127.0.0.1:7001/ --apply
 ```
 
-需要保留 Caddy 和默认 WebSocket 入口时，在预览和执行时都传 `--edition full`。迁移会备份 MySQL 和部署配置、拉取预构建镜像并更新数据库。基础 Compose 和 `.env` 保持原样。迁移后按脚本打印的 Compose 命令启动，保留命令中的所有 `-f` 文件。详细参数及回滚见[迁移教程](./docs/en/installation/migrate-existing-compose.md)。
+也可传 `--edition standard` 或 `--edition full`。迁移会备份 MySQL 或 SQLite 及部署配置、拉取镜像并更新数据库。完整版迁移会先列出并停止检测到的反向代理容器。自定义代理可用 `--proxy-container 容器名` 补充。代理停机可能影响同机其他站点。迁移失败时脚本会尝试恢复原镜像、原 Compose override 和本次停止的代理。数据库变更需根据备份单独处理。基础 Compose 和 `.env` 保持原样。迁移后按脚本打印的 Compose 命令启动，保留命令中的所有 `-f` 文件。详细参数及回滚见[迁移教程](./docs/en/installation/migrate-existing-compose.md)。
 
 ## 更新现有 Docker 部署
 
-先备份数据库、`.env` 和现有 Compose 文件，记录当前镜像版本。在当前部署目录中执行：
+对于已使用本仓库 GHCR 镜像的部署，在原部署目录运行：
 
 ```bash
-docker compose pull xboard
-docker compose up -d xboard
-docker compose ps
-docker compose logs --tail=100 xboard
+curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/migrate-to-mx-mundo.sh -o migrate-to-mx-mundo.sh
+bash migrate-to-mx-mundo.sh --upgrade --health-url http://127.0.0.1:7001/
 ```
 
-如已用迁移脚本生成 override，执行这些命令时加上脚本打印的全部 `-f` 参数。用 `docker compose config --images` 核对生效的镜像。已有部署无需运行 `xboard:install`。
+脚本识别现有版本，备份后拉取同版最新镜像，执行更新并检查 HTTP。升级失败会尝试恢复旧镜像。升级保持外部代理运行。自定义 Compose 文件或 override 可通过 `--compose` 和 `--override` 指定。
 
 - [已有部署迁移补充说明](./docs/en/installation/migrate-existing-compose.md)
 - [GitHub Actions 构建记录](https://github.com/Furina-Lee/Xboard/actions/workflows/docker-publish.yml)

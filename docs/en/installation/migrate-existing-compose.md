@@ -1,6 +1,6 @@
 # Migrate an existing Docker Compose deployment
 
-The migration script replaces the Xboard service image in an existing MySQL deployment. It retains the base Compose file, existing override, environment file, mounts, network and reverse proxy configuration. It creates a MySQL dump and a local rollback image before stopping Xboard. The database schema can change during the migration.
+The migration script replaces the Xboard service image in an existing MySQL or SQLite deployment. It retains the base Compose file, existing override, environment file, mounts, network and reverse proxy configuration. It creates a database dump and a local rollback image before stopping Xboard. The database schema can change during the migration.
 
 ## Preview and apply
 
@@ -12,9 +12,19 @@ bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:700
 bash migrate-to-mx-mundo.sh --edition standard --health-url http://127.0.0.1:7001/ --apply
 ```
 
-Choose `--edition full` for built-in Caddy and the default WebSocket service. Choose `--edition standard` for direct Octane HTTP on port 7001, including 1Panel deployments backed by OpenResty. If the service is published on another port, pass the actual URL. Set `--compose FILE` or `--service NAME` if your setup uses different names. The script detects `compose.mx-mundo.override.yaml` and accepts `--override FILE` for other existing overrides. Pass the same options to preview and apply.
+Omit `--edition` in an interactive terminal to choose from a menu. Choose `--edition full` for built-in Caddy and the default WebSocket service. Choose `--edition standard` for direct Octane HTTP on port 7001, including 1Panel deployments backed by OpenResty. If the service is published on another port, pass the actual URL. Set `--compose FILE` or `--service NAME` if your setup uses different names. The script detects `compose.mx-mundo.override.yaml` and accepts `--override FILE` for other existing overrides. Pass the same options to preview and apply.
 
 By default the script runs the MySQL dump client using the Xboard service network. Use `--mysql-service NAME` to select a different Compose service containing a compatible dump client, or use `--skip-db-backup` after making an external backup. Keep the snapshot private because it contains deployment credentials and database data.
+
+During a full-edition migration, the script lists common reverse-proxy containers and stops the listed containers before replacing Xboard. Add custom proxies using repeated `--proxy-container NAME` options. Review the list before applying because other sites can be affected. The listed proxies stay stopped after a successful migration. On failure they are restarted as part of rollback.
+
+## Upgrade an existing GHCR deployment
+
+```bash
+bash migrate-to-mx-mundo.sh --upgrade --health-url http://127.0.0.1:7001/
+```
+
+The script detects the deployed edition, pulls its current published tag, and checks HTTP after upgrading. It leaves proxy containers running. On failure, the script attempts to restore the previous application image and Compose override. Database recovery uses the saved dump and is a separate operation.
 
 ## Start after migration
 

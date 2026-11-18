@@ -16,6 +16,10 @@ EDITION=""
 BASE_OVERRIDE=""
 MODE="dry-run"
 YES=0
+PROXY_CONTAINERS=()
+STOPPED_PROXIES=()
+UPGRADE=0
+TOUCHED_SERVICE=0
 SKIP_DB_BACKUP=0
 
 usage() {
@@ -26,6 +30,7 @@ Usage:
 Modes:
   --dry-run                 Inspect and print the planned migration (default)
   --apply                   Back up, pull, update, and start the target service
+  --upgrade                 Update the currently installed GHCR edition
   --rollback SNAPSHOT_DIR   Restore the old image/configuration from a snapshot
 
 Options:
@@ -35,10 +40,11 @@ Options:
   --mysql-service NAME      Compose service containing mysqldump (default: Xboard service)
   --backup-dir DIR          Snapshot destination (default: sibling backup directory)
   --health-url URL          URL to check after startup
-  --edition standard|full   Published edition (default: standard)
+  --edition standard|full   Published edition (interactive selection if omitted)
   --image IMAGE             Override the published image reference
   --override FILE           Existing Compose override (auto-detects compose.mx-mundo.override.yaml)
-  --yes                     Do not ask for the apply confirmation
+  --proxy-container NAME    Include a custom reverse proxy (repeatable)
+  --yes                     Skip confirmation, including listed proxy stops
   --skip-db-backup          Skip the script's MySQL dump (use only after an external backup)
   -h, --help                Show this help
 
@@ -57,6 +63,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) MODE="dry-run"; shift ;;
     --apply) MODE="apply"; shift ;;
+    --upgrade) MODE="apply"; UPGRADE=1; shift ;;
+    --proxy-container) PROXY_CONTAINERS+=("${2:?--proxy-container needs a name}"); shift 2 ;;
     --rollback)
       [[ $# -ge 2 ]] || die "--rollback requires a snapshot directory"
       MODE="rollback"; BACKUP_DIR="$2"; shift 2 ;;
@@ -122,17 +130,66 @@ if [[ -z "$BACKUP_DIR" ]]; then
   PARENT="$(dirname "$ROOT")"
   BACKUP_DIR="$PARENT/xboard-migration-backups/$(date -u +%Y%m%dT%H%M%SZ)"
 fi
-EDITION="${EDITION:-standard}"
-case "$EDITION" in standard|full) ;; *) die "Unknown edition: $EDITION" ;; esac
-IMAGE="${IMAGE:-ghcr.io/furina-lee/xboard:$EDITION}"
-[[ "$IMAGE" =~ ^[a-zA-Z0-9][a-zA-Z0-9_./:@-]*$ ]] || die "Invalid image reference"
-OVERRIDE="$ROOT/compose.mx-mundo.image.yaml"
-if [[ "$MODE" != rollback && -e "$OVERRIDE" ]]; then
-  die "Migration override already exists: $OVERRIDE. Use it for regular Docker updates."
+if [[ "$MODE" != rollback ]]; then
+  OVERRIDE="$ROOT/compose.mx-mundo.image.yaml"
+  ROLLBACK_OVERRIDE="$ROOT/compose.mx-mundo.rollback.yaml"
+  OLD_IMAGE=""
+  ROLLBACK_IMAGE=""
+  if [[ "$UPGRADE" == 1 ]]; then
+    current_compose=("${COMPOSE[@]}")
+    [[ ! -f "$OVERRIDE" ]] || current_compose+=(-f "$OVERRIDE")
+    current_image="$("${current_compose[@]}" config --images "$SERVICE")"
+    case "$current_image" in
+      ghcr.io/furina-lee/xboard:standard|ghcr.io/furina-lee/xboard:1panel|ghcr.io/furina-lee/xboard:standard-*) current_edition=standard ;;
+      ghcr.io/furina-lee/xboard:full|ghcr.io/furina-lee/xboard:latest|ghcr.io/furina-lee/xboard:full-*) current_edition=full ;;
+      *) die "Cannot infer edition from $current_image. Migrate to a published edition first." ;;
+    esac
+    [[ -z "$EDITION" || "$EDITION" == "$current_edition" ]] || die "--upgrade keeps the current edition"
+    [[ -z "$IMAGE" ]] || die "--upgrade uses the published tag for the current edition"
+    EDITION="$current_edition"
+  elif [[ -e "$OVERRIDE" ]]; then
+    die "Migration override already exists: $OVERRIDE. Use --upgrade."
+  elif [[ -z "$EDITION" && -t 0 ]]; then
+    printf '1) 标准版 standard（无 Caddy）\n2) 完整版 full（内置 Caddy）\n请选择版本 [1/2]: ' >&2
+    read -r choice
+    case "$choice" in 1|standard) EDITION=standard ;; 2|full) EDITION=full ;; *) die "Invalid edition selection" ;; esac
+  fi
+  EDITION="${EDITION:-standard}"
+  case "$EDITION" in standard|full) ;; *) die "Unknown edition: $EDITION" ;; esac
+  IMAGE="${IMAGE:-ghcr.io/furina-lee/xboard:$EDITION}"
+  [[ "$IMAGE" =~ ^[a-zA-Z0-9][a-zA-Z0-9_./:@-]*$ ]] || die "Invalid image reference"
 fi
-ROLLBACK_OVERRIDE="$ROOT/compose.mx-mundo.rollback.yaml"
-OLD_IMAGE=""
-ROLLBACK_IMAGE=""
+
+# Detect common proxy images/names and let the operator include custom ones.
+list_proxies() {
+  local containers id image name explicit
+  local -A selected=()
+  containers="$(docker ps --no-trunc --format '{{.ID}} {{.Image}} {{.Names}}')" || return 1
+  while read -r id image name; do
+    [[ -n "$id" ]] || continue
+    if [[ "${image,,} ${name,,}" =~ (^|[^a-z0-9])(nginx|openresty|traefik|caddy|haproxy|swag|envoy|reverse[-_]?proxy|zoraxy)([^a-z0-9]|$) ]]; then
+      selected["$id"]="$name ($image)"
+    fi
+  done <<< "$containers"
+  for explicit in "${PROXY_CONTAINERS[@]}"; do
+    read -r id name < <(docker inspect -f '{{.Id}} {{.Name}} {{.State.Running}}' "$explicit") || return 1
+    [[ "$name" == *" true" ]] || continue
+    selected["$id"]="${name% true}"
+  done
+  PROXY_CONTAINERS=()
+  for id in "${!selected[@]}"; do
+    PROXY_CONTAINERS+=("$id")
+    log "proxy to stop: ${selected[$id]} ($id)"
+  done
+}
+
+restore_proxies() {
+  local id result=0
+  for id in "${STOPPED_PROXIES[@]}"; do
+    docker start "$id" >/dev/null || result=1
+  done
+  return "$result"
+}
 
 # Simple .env reader for the DB_* values used by mysqldump. It intentionally
 # supports the normal KEY=value form used by Xboard's installer.
@@ -152,13 +209,16 @@ DB_USERNAME="$(env_value DB_USERNAME)"
 DB_PASSWORD="$(env_value DB_PASSWORD)"
 
 if [[ "$MODE" != "rollback" ]]; then
-  [[ "${DB_CONNECTION:-mysql}" == "mysql" ]] || die "This script requires DB_CONNECTION=mysql"
-  [[ -n "$DB_HOST" && -n "$DB_DATABASE" && -n "$DB_USERNAME" ]] || die "DB_HOST, DB_DATABASE, and DB_USERNAME must be present in .env"
+  case "${DB_CONNECTION:-mysql}" in
+    mysql) [[ -n "$DB_HOST" && -n "$DB_DATABASE" && -n "$DB_USERNAME" ]] || die "DB_HOST, DB_DATABASE, and DB_USERNAME must be present in .env" ;;
+    sqlite) DB_DATABASE="${DB_DATABASE:-.docker/.data/database.sqlite}" ;;
+    *) die "Only MySQL and SQLite deployments are supported" ;;
+  esac
 fi
 DB_PORT="${DB_PORT:-3306}"
 
 print_plan() {
-  log "mode: $MODE"
+  log "mode: $( [[ "$UPGRADE" == 1 ]] && printf upgrade || printf "%s" "$MODE" )"
   log "project: $ROOT"
   log "compose: $COMPOSE_FILE"
   log "service: $SERVICE"
@@ -171,6 +231,10 @@ print_plan() {
   printf "[migrate] future start command:"; printf " %q" "${COMPOSE[@]}" -f "$OVERRIDE" up -d; printf "\n"
 }
 
+if [[ "$MODE" != rollback && "$UPGRADE" == 0 && "$EDITION" == full ]]; then
+  list_proxies || die "Could not inspect running proxy containers"
+fi
+
 if [[ "$MODE" == "dry-run" ]]; then
   print_plan
   log "dry-run complete; no service, volume, database, or file was changed"
@@ -181,6 +245,9 @@ umask 077
 
 confirm() {
   [[ "$YES" == "1" ]] && return 0
+  if (( ${#PROXY_CONTAINERS[@]} )); then
+    warn "Stopping these reverse proxies can interrupt other websites on this host"
+  fi
   printf '[migrate] Type APPLY to continue: ' >&2
   read -r answer
   [[ "$answer" == "APPLY" ]] || die "Migration cancelled"
@@ -212,12 +279,14 @@ backup_state() {
   log "saving configuration and runtime state"
   cp -p "$ROOT/.env" "$BACKUP_DIR/.env"
   cp -p "$COMPOSE_FILE" "$BACKUP_DIR/$(basename "$COMPOSE_FILE")"
+  [[ ! -f "$OVERRIDE" ]] || cp -p "$OVERRIDE" "$BACKUP_DIR/previous-image.override.yaml"
   [[ -z "$BASE_OVERRIDE" ]] || cp -p "$BASE_OVERRIDE" "$BACKUP_DIR/existing-override.yaml"
   printf '%s\n' "$COMPOSE_CONFIG" > "$BACKUP_DIR/compose.resolved.yaml"
   "${COMPOSE[@]}" ps -a > "$BACKUP_DIR/compose.ps.txt" || true
   "${COMPOSE[@]}" images > "$BACKUP_DIR/compose.images.txt" || true
   local cid
   cid="$( "${COMPOSE[@]}" ps -a -q "$SERVICE" | head -n 1 || true)"
+  [[ -n "$cid" ]] || die "Could not find an existing Xboard container to roll back to"
   if [[ -n "$cid" ]]; then
     docker inspect "$cid" > "$BACKUP_DIR/container-$cid.json"
     OLD_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$cid")"
@@ -257,6 +326,25 @@ services:
     image: $IMAGE
     build: !reset null
 EOF
+  if [[ "$UPGRADE" == 1 && -f "$BACKUP_DIR/previous-image.override.yaml" ]]; then
+    # Keep environment overrides from a previous migration, replacing just the image.
+    sed "s|^    image: .*|    image: $IMAGE|" "$BACKUP_DIR/previous-image.override.yaml" > "$OVERRIDE"
+  elif [[ "$UPGRADE" == 0 && "$EDITION" == full ]]; then
+    cat >> "$OVERRIDE" <<'EOF'
+    environment:
+      ENABLE_CADDY: "true"
+      ENABLE_WS_SERVER: "true"
+      OCTANE_PORT: "7002"
+      CADDY_LISTEN_PORT: "7001"
+EOF
+  elif [[ "$UPGRADE" == 0 ]]; then
+    cat >> "$OVERRIDE" <<'EOF'
+    environment:
+      ENABLE_CADDY: "false"
+      ENABLE_WS_SERVER: "false"
+      OCTANE_PORT: "7001"
+EOF
+  fi
 }
 
 write_rollback_override() {
@@ -281,6 +369,7 @@ pull_target() {
 run_update() {
   local update_log="$BACKUP_DIR/xboard-update.log"
   log "stopping only service $SERVICE"
+  TOUCHED_SERVICE=1
   "${COMPOSE[@]}" stop "$SERVICE" || return 1
   log "running database migrations and xboard:update"
   local target_compose=("${COMPOSE[@]}" -f "$OVERRIDE")
@@ -303,12 +392,19 @@ start_and_check() {
   "${target_compose[@]}" up -d --no-deps --no-build --pull never "$SERVICE" || return 1
   for _ in $(seq 1 30); do
     if "${target_compose[@]}" ps --status running --services | grep -Fxq "$SERVICE"; then
-      if [[ -z "$HEALTH_URL" ]]; then
-        log "service is running; no health URL was supplied"
-        return 0
-      fi
-      if command -v curl >/dev/null 2>&1 && curl -fsSL --max-time 10 "$HEALTH_URL" >/dev/null; then
-        log "health check passed: $HEALTH_URL"
+      if [[ -n "$HEALTH_URL" ]]; then
+        if curl -fsSL --max-time 5 "$HEALTH_URL" >/dev/null; then
+          log "health check passed: $HEALTH_URL"
+          return 0
+        fi
+      elif "${target_compose[@]}" exec -T "$SERVICE" php -r '
+        $port = getenv("ENABLE_CADDY") === "true"
+            ? (getenv("CADDY_LISTEN_PORT") ?: 7001)
+            : (getenv("OCTANE_PORT") ?: 7001);
+        $context = stream_context_create(["http" => ["timeout" => 3]]);
+        exit(@file_get_contents("http://127.0.0.1:$port/", false, $context) === false ? 1 : 0);
+      '; then
+        log "internal HTTP health check passed"
         return 0
       fi
     fi
@@ -324,49 +420,91 @@ rollback_service() {
   if [[ -n "$ROLLBACK_IMAGE" ]] && docker image inspect "$ROLLBACK_IMAGE" >/dev/null 2>&1; then
     write_rollback_override
     log "use rollback override: $ROLLBACK_OVERRIDE"
-    "${COMPOSE[@]}" -f "$ROLLBACK_OVERRIDE" up -d --no-deps --no-build --pull never "$SERVICE" || result=$?
+    local previous=("${COMPOSE[@]}")
+    [[ ! -f "$BACKUP_DIR/previous-image.override.yaml" ]] || previous+=(-f "$BACKUP_DIR/previous-image.override.yaml")
+    "${previous[@]}" -f "$ROLLBACK_OVERRIDE" up -d --no-deps --no-build --pull never "$SERVICE" || result=$?
   else
     warn "the old image tag is unavailable; using the original Compose image reference"
     "${COMPOSE[@]}" up -d --no-deps --no-build --pull never "$SERVICE" || result=$?
   fi
-  warn "database was not automatically restored; use $BACKUP_DIR/mysql.sql.gz only after reviewing migration impact"
+  warn "Database changes were not reverted. Review any database dump in $BACKUP_DIR."
   return "$result"
 }
 
-if [[ "$MODE" == "rollback" ]]; then
-  log "rollback restores the previous image/configuration only; database restore is manual"
-  rollback_service || die "Could not restart the previous image"
-  [[ "$OVERRIDE" != "$ROOT/compose.mx-mundo.image.yaml" ]] || rm -f "$OVERRIDE"
+restore_override() {
+  if [[ -f "$BACKUP_DIR/previous-image.override.yaml" ]]; then
+    cp -p "$BACKUP_DIR/previous-image.override.yaml" "$OVERRIDE"
+  elif [[ "$OVERRIDE" == "$ROOT/compose.mx-mundo.image.yaml" ]]; then
+    rm -f "$OVERRIDE"
+  fi
+}
+
+load_stopped_proxies() {
+  [[ ! -f "$BACKUP_DIR/stopped-proxies.txt" ]] || mapfile -t STOPPED_PROXIES < "$BACKUP_DIR/stopped-proxies.txt"
+}
+
+if [[ "$MODE" == rollback ]]; then
+  load_stopped_proxies
+  result=0
+  rollback_service || result=1
+  restore_override || result=1
+  restore_proxies || result=1
+  [[ "$result" == 0 ]] || die "Rollback was incomplete; review $BACKUP_DIR"
   exit 0
 fi
 
 print_plan
+[[ -z "$HEALTH_URL" ]] || command -v curl >/dev/null || die "curl is required with --health-url"
 confirm
-mkdir -p "$BACKUP_DIR"
-if [[ "$SKIP_DB_BACKUP" == "1" ]]; then
-  warn "--skip-db-backup was supplied; database rollback will not be available"
+mkdir -p "$(dirname "$BACKUP_DIR")"
+mkdir "$BACKUP_DIR"
+if [[ "$SKIP_DB_BACKUP" == 1 ]]; then
+  warn "--skip-db-backup was supplied; no database dump will be created"
+elif [[ "$DB_CONNECTION" == sqlite ]]; then
+  "${COMPOSE[@]}" exec -T "$SERVICE" sqlite3 -bail "$DB_DATABASE" .dump | gzip -c > "$BACKUP_DIR/sqlite.sql.gz"
+  gzip -t "$BACKUP_DIR/sqlite.sql.gz"
 else
   backup_mysql
 fi
 backup_state
-write_rollback_override
 pull_target
+
+recover_on_exit() {
+  local status="$1" result=0
+  trap - EXIT INT TERM
+  [[ "$status" != 0 ]] || return 0
+  if [[ "$TOUCHED_SERVICE" == 1 ]]; then
+    rollback_service || result=1
+  fi
+  restore_override || result=1
+  restore_proxies || result=1
+  if [[ "$result" == 0 ]]; then
+    warn "Previous application and proxy configuration restored; see $BACKUP_DIR"
+  else
+    warn "Rollback was incomplete; see $BACKUP_DIR"
+  fi
+  exit "$status"
+}
+trap 'recover_on_exit $?' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 write_override
-"${COMPOSE[@]}" -f "$OVERRIDE" config --quiet || { rm -f "$OVERRIDE"; die "Compose could not validate the image override"; }
+"${COMPOSE[@]}" -f "$OVERRIDE" config --quiet || die "Compose could not validate the image override"
 
-if ! run_update; then
-  rollback_service || die "Rollback could not restart the old service; review $BACKUP_DIR"
-  rm -f "$OVERRIDE"
-  die "xboard:update failed; old service was restarted, review $BACKUP_DIR"
-fi
+for id in "${PROXY_CONTAINERS[@]}"; do
+  [[ "$UPGRADE" == 0 && "$EDITION" == full ]] || break
+  STOPPED_PROXIES+=("$id")
+  printf '%s\n' "$id" >> "$BACKUP_DIR/stopped-proxies.txt"
+  docker stop "$id" >/dev/null
+done
 
-if ! start_and_check; then
-  rollback_service || die "Rollback could not restart the old service; review $BACKUP_DIR"
-  rm -f "$OVERRIDE"
-  die "target service failed health checks; old service was restarted, review $BACKUP_DIR"
-fi
+run_update || die "xboard:update failed; review $BACKUP_DIR"
+start_and_check || die "Target service failed health checks; review $BACKUP_DIR"
+trap - EXIT INT TERM
 
-log "migration completed"
+log "migration/upgrade completed"
 log "snapshot: $BACKUP_DIR"
 printf "[migrate] keep using:"; printf " %q" "${COMPOSE[@]}" -f "$OVERRIDE" up -d; printf "\n"
-log "the original compose file, .env, database, volumes, and reverse proxy were preserved"
+if (( ${#STOPPED_PROXIES[@]} )); then
+  log "External proxy containers remain stopped. Review $BACKUP_DIR/stopped-proxies.txt."
+fi
