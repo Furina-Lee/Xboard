@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Models\SubscribeTemplate;
 use App\Services\MailService;
+use App\Services\NodeInstallerSettings;
 use App\Services\TelegramService;
 use App\Services\ThemeService;
 use App\Utils\Dict;
@@ -145,6 +146,8 @@ class ConfigController extends Controller
                 'device_limit_mode' => (int) admin_setting('device_limit_mode', 0),
                 'server_ws_enable' => (bool) admin_setting('server_ws_enable', 1),
                 'server_ws_url' => admin_setting('server_ws_url', ''),
+                'node_installer_url' => NodeInstallerSettings::url(),
+                'node_installer_version' => NodeInstallerSettings::version(),
             ],
             'email' => [
                 'email_host' => admin_setting('email_host'),
@@ -229,6 +232,10 @@ class ConfigController extends Controller
             if ($k == 'frontend_theme') {
                 $themeService = app(ThemeService::class);
                 $themeService->switch($v);
+            }
+            if (in_array($k, ['node_installer_url', 'node_installer_version'], true)) {
+                // Preserve versions as strings through the settings layer's JSON decoding.
+                $v = ['value' => $v];
             }
             admin_setting([$k => $v]);
         }

@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerMachineLoadHistory;
 use App\Services\MachineSshLinks;
+use App\Services\NodeInstallerSettings;
 use App\Services\NodeSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -208,8 +209,8 @@ class MachineController extends Controller
     private function buildInstallCommand(Request $request, ServerMachine $machine): string
     {
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
-        $installerUrl = trim((string) config('machine.installer_url'));
-        $installerVersion = (string) config('machine.installer_version');
+        $installerUrl = trim(NodeInstallerSettings::url());
+        $installerVersion = NodeInstallerSettings::version();
         if (!filter_var($installerUrl, FILTER_VALIDATE_URL) || !preg_match('/\Ahttps:\/\//i', $installerUrl)) {
             throw new ApiException('XBOARD_NODE_INSTALLER_URL 必须是有效的 HTTPS 地址。');
         }

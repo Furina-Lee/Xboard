@@ -42,7 +42,7 @@
 
 配置了连接的机器会显示 **SSH**，节点管理的部署方式列也会在所属机器旁显示入口。浏览器会在新标签页打开 Guacamole，由 Guacamole 处理登录、授权和 SSH 会话。
 
-机器安装命令默认使用 Xboard-Node 的 `v1.13` 安装脚本和二进制。要切换到自己的仓库，在 `.env` 设置 `XBOARD_NODE_INSTALLER_URL` 为该仓库中兼容安装脚本的 HTTPS 原始文件地址，并将 `XBOARD_NODE_INSTALLER_VERSION` 设为相应发布版本。自有脚本需要支持机器模式、`--machine-id` 和 `--version`，并从预期仓库下载二进制。
+机器安装命令默认使用 Xboard-Node 的 `v1.13` 安装脚本和二进制。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。地址使用兼容脚本的 HTTPS 原始文件地址，版本使用对应的发布标签。清空字段并保存会恢复部署默认值，可在 `.env` 中设置同名变量覆盖默认值。自有脚本需要支持机器模式、`--machine-id` 和 `--version`，并从预期仓库下载二进制。
 
 ## Docker 镜像
 
