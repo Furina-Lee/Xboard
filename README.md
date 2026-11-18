@@ -2,6 +2,12 @@
 
 基于 Xboard 的代理协议管理面板，支持 MX 节点、Mundo Connect 1（`mc1`）、Mundo RDP（`mundordp`）和通用订阅中的 `mx://` URI。订阅客户端需要支持对应协议和传输方式。
 
+## 管理后台主题
+
+管理后台默认使用简约主题，支持现有深色模式和系统减少动态效果偏好。主题来自 `public/assets/admin` 子模块。可在部署的 `.env` 中设置 `XBOARD_ADMIN_THEME=default` 恢复原样式，或设置自定义主题 ID。修改后重建容器，已有 Laravel 配置缓存时需刷新。
+
+[主题开发文档与预览](https://github.com/Furina-Lee/xboard-admin-dist/tree/master)
+
 ## Docker 镜像
 
 两个版本使用相同的 Xboard 面板代码，均支持 MX/Mundo、内置 Redis 和 Linux AMD64 / ARM64。区别在于 HTTP 入口和节点 WebSocket 的默认配置。

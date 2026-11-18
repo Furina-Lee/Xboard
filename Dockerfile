@@ -46,7 +46,9 @@ COPY .docker /
 
 COPY . /www
 RUN test -f /www/.env.example && \
-    test -d /www/public/assets/admin/assets
+    test -d /www/public/assets/admin/assets && \
+    test -f /www/public/assets/admin/themes/base.css && \
+    test -f /www/public/assets/admin/themes/minimal/theme.css
 
 COPY .docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY .docker/caddy/Caddyfile /etc/caddy/Caddyfile

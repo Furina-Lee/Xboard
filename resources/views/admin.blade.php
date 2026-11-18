@@ -1,5 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+@php
+    $adminTheme = config('app.admin_theme', 'minimal');
+    $adminThemeFile = null;
+    if (is_string($adminTheme) && $adminTheme !== 'default' && preg_match('/\A[a-z][a-z0-9-]*\z/', $adminTheme)) {
+        $themeCandidate = "assets/admin/themes/{$adminTheme}/theme.css";
+        if (is_file(public_path('assets/admin/themes/base.css')) && is_file(public_path($themeCandidate))) {
+            $adminThemeFile = $themeCandidate;
+        }
+    }
+@endphp
+<html lang="en" @if($adminThemeFile) data-admin-theme="{{ $adminTheme }}" @endif>
 
 <head>
   <meta charset="UTF-8" />
@@ -76,6 +86,10 @@
     <script src="/assets/admin/locales/en-US.js"></script>
     <script src="/assets/admin/locales/zh-CN.js"></script>
     <script src="/assets/admin/locales/ko-KR.js"></script>
+  @endif
+  @if($adminThemeFile)
+    <link rel="stylesheet" href="{{ asset('assets/admin/themes/base.css') }}" />
+    <link rel="stylesheet" href="{{ asset($adminThemeFile) }}" />
   @endif
 </head>
 

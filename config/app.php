@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'admin_theme' => env('XBOARD_ADMIN_THEME', 'minimal'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
