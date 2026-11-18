@@ -1,33 +1,59 @@
 {
   "name": "Xboard",
-  "description": "Xboard",
-  "version": "1.0.0",
-  "images": "",
+  "description": "achen 用户主题",
+  "version": "1.4.4",
+  "author": "achen",
+  "author_email": "wapyyds@outlook.com",
   "configs": [
     {
       "label": "主题色",
-      "placeholder": "请选择主题颜色",
+      "placeholder": "选择主题色",
       "field_name": "theme_color",
       "field_type": "select",
-      "select_options": {
-        "default": "默认(绿色)",
-        "blue": "蓝色",
-        "black": "黑色",
-        "darkblue": "暗蓝色"
-      },
+      "select_options": { "default": "Apple 蓝", "purple": "极光紫", "green": "薄荷绿" },
       "default_value": "default"
     },
     {
-      "label": "背景",
-      "placeholder": "请输入背景图片URL",
+      "label": "背景图片",
+      "placeholder": "输入图片 URL，留空使用极光背景",
       "field_name": "background_url",
-      "field_type": "input"
+      "field_type": "input",
+      "default_value": ""
     },
     {
-      "label": "自定义页脚HTML",
-      "placeholder": "可以实现客服JS代码的加入等",
+      "label": "Android 客户端下载地址",
+      "placeholder": "https://...",
+      "field_name": "android_url",
+      "field_type": "input",
+      "default_value": ""
+    },
+    {
+      "label": "Windows 客户端下载地址",
+      "placeholder": "https://...",
+      "field_name": "windows_url",
+      "field_type": "input",
+      "default_value": ""
+    },
+    {
+      "label": "macOS 客户端下载地址",
+      "placeholder": "https://...",
+      "field_name": "macos_url",
+      "field_type": "input",
+      "default_value": ""
+    },
+    {
+      "label": "iOS 客户端下载地址",
+      "placeholder": "https://...",
+      "field_name": "ios_url",
+      "field_type": "input",
+      "default_value": ""
+    },
+    {
+      "label": "自定义 HTML",
+      "placeholder": "可插入统计代码等自定义内容",
       "field_name": "custom_html",
-      "field_type": "textarea"
+      "field_type": "textarea",
+      "default_value": ""
     }
   ]
 }

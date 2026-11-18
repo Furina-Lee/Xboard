@@ -48,7 +48,9 @@ COPY . /www
 RUN test -f /www/.env.example && \
     test -d /www/public/assets/admin/assets && \
     test -f /www/public/assets/admin/themes/base.css && \
-    test -f /www/public/assets/admin/themes/minimal/theme.css
+    test -f /www/public/assets/admin/themes/minimal/theme.css && \
+    test -f /www/public/assets/user/xboard/achen-1.4.4/app.js && \
+    test -f /www/public/assets/user/xboard/achen-1.4.4/app.css
 
 COPY .docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY .docker/caddy/Caddyfile /etc/caddy/Caddyfile
