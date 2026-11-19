@@ -61,18 +61,19 @@
     }
 
     foreach (glob(public_path('assets/admin/locales/*.js')) ?: [] as $localeFile) {
-      $locales[] = 'locales/' . basename($localeFile);
+      $locales['locales/' . basename($localeFile)] = hash_file('sha256', $localeFile);
     }
-    sort($locales);
+    ksort($locales);
   @endphp
 
   @if($entry && count($scripts) > 0)
     @foreach($styles as $css)
       <link rel="stylesheet" crossorigin href="/assets/admin/{{ $css }}" />
     @endforeach
-    @foreach($locales as $locale)
-      <script src="/assets/admin/{{ $locale }}?v={{ $version }}"></script>
+    @foreach($locales as $locale => $localeHash)
+      <script src="/assets/admin/{{ $locale }}?v={{ $localeHash }}"></script>
     @endforeach
+    <script src="{{ asset('js/admin-loon-translations.js') }}?v={{ $version }}"></script>
     @foreach($scripts as $js)
       <script type="module" crossorigin src="/assets/admin/{{ $js }}"></script>
     @endforeach
@@ -83,7 +84,8 @@
     <link rel="stylesheet" crossorigin href="/assets/admin/assets/vendor.css">
     <script src="/assets/admin/locales/en-US.js"></script>
     <script src="/assets/admin/locales/zh-CN.js"></script>
-    <script src="/assets/admin/locales/ko-KR.js"></script>
+    <script src="/assets/admin/locales/ru-RU.js"></script>
+    <script src="{{ asset('js/admin-loon-translations.js') }}?v={{ $version }}"></script>
   @endif
   @if($adminThemeFile)
     <link rel="stylesheet" href="{{ asset('assets/admin/themes/base.css') }}" />
@@ -94,6 +96,7 @@
   @endif
   <link rel="stylesheet" href="{{ asset('css/admin-theme-picker.css') }}?v={{ $version }}" />
   <script src="{{ asset('js/admin-theme-picker.js') }}?v={{ $version }}" defer></script>
+  <link rel="stylesheet" href="{{ asset('css/admin-node-installer.css') }}?v={{ $version }}" />
 </head>
 
 <body>

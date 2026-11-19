@@ -1,0 +1,44 @@
+form:has(#node_installer_url) {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+}
+
+form:has(#node_installer_url) button[type="submit"] {
+  min-height: 44px;
+  scroll-margin-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  transition: transform 120ms ease, opacity 120ms ease, background-color 120ms ease;
+}
+
+form:has(#node_installer_url) button[type="submit"]:active:not(:disabled) {
+  transform: scale(.97);
+  opacity: .85;
+}
+
+form:has(#node_installer_url:disabled) button[type="submit"]:disabled::before {
+  content: "";
+  width: .875rem;
+  height: .875rem;
+  margin-inline-end: .5rem;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: installer-saving 700ms linear infinite;
+}
+
+@keyframes installer-saving {
+  to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  form:has(#node_installer_url) button[type="submit"] {
+    transition: none;
+  }
+
+  form:has(#node_installer_url) button[type="submit"]:active:not(:disabled) {
+    transform: none;
+  }
+
+  form:has(#node_installer_url:disabled) button[type="submit"]:disabled::before {
+    animation: none;
+  }
+}
+
