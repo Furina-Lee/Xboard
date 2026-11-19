@@ -65,7 +65,14 @@ class ServerService
             ->get()
             ->append(['last_check_at', 'last_push_at', 'online', 'is_online', 'available_status', 'cache_key', 'server_key']);
 
-        $servers = collect($servers)->map(function ($server) use ($user) {
+        // MX workers only receive users with remaining quota, and machines
+        // only start enabled nodes. Do not advertise MX entries they cannot serve.
+        $servers = $servers->reject(fn (Server $server) =>
+            $server->type === Server::TYPE_MX
+            && (!$server->enabled || $user->u + $user->d >= $user->transfer_enable)
+        )->values();
+
+        $servers = $servers->map(function ($server) use ($user) {
             // 判断动态端口
             if (str_contains($server->port, '-')) {
                 $port = $server->port;
