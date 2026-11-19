@@ -63,8 +63,12 @@ class ClientController extends Controller
 
         $clientInfo = $this->getClientInfo($request);
 
-        $loonConfig = $request->input('format') === 'loon-config';
-        if ($loonConfig && $clientInfo['name'] !== 'loon') {
+        $format = $request->input('format');
+        $explicitLoonFormat = in_array($format, ['loon-config', 'loon-nodes'], true);
+        $loonConfig = $format === 'loon-config' || (
+            $format === null && $clientInfo['name'] === 'loon' && admin_setting('loon_full_config_enable', false)
+        );
+        if ($explicitLoonFormat && $clientInfo['name'] !== 'loon') {
             $clientInfo['name'] = 'loon';
             $clientInfo['version'] = null;
         }
@@ -72,7 +76,7 @@ class ClientController extends Controller
         $requestedTypes = $this->parseRequestedTypes($request->input('types'));
         $filterKeywords = $this->parseFilterKeywords($request->input('filter'));
 
-        $protocolClassName = $loonConfig ? Loon::class : (
+        $protocolClassName = ($explicitLoonFormat || $loonConfig) ? Loon::class : (
             app('protocols.manager')->matchProtocolClassName($clientInfo['flag']) ?? General::class
         );
 

@@ -14,20 +14,27 @@
       this.replaceChildren(template.content.cloneNode(true));
       this.grid = this.querySelector('.xboard-admin-theme-grid');
       this.status = this.querySelector('[role="status"]');
-      this.form = this.querySelector('form');
-      this.form.addEventListener('submit', (event) => {
-        event.preventDefault();
+      this.fileInput = this.querySelector('input[type="file"]');
+      this.fileInput.addEventListener('change', () => {
+        const [file] = this.fileInput.files;
+        this.fileInput.value = '';
+        if (!file) return;
+
         this.run(async () => {
-          this.render(await this.request('/upload', new FormData(this.form)));
-          this.form.reset();
+          const body = new FormData();
+          body.append('theme', file);
+          this.render(await this.request('/upload', body));
           return '主题校验通过并已保存。';
         });
       });
       this.run(async () => {
         this.render(await this.request());
-        this.form.querySelector('button').disabled = false;
         return '';
       }, true);
+    }
+
+    openUpload() {
+      if (this.getAttribute('aria-busy') !== 'true') this.fileInput?.click();
     }
 
     disconnectedCallback() {

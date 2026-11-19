@@ -22,7 +22,7 @@
    }
    ```
 
-2. 在 **后台主题** 选择文件，点击 **校验并保存**。服务端检查文件大小（最多 4 KB）、JSON 结构、主题 ID、重复名称、允许的颜色变量与数值范围。校验通过后才会把色板写入数据库。上传支持 JSON 色板，样式表、脚本、归档和外部资源地址均不接受。
+2. 在 **后台主题** 点击 **上传主题**，选择 JSON 色板。服务端检查文件大小（最多 4 KB）、JSON 结构、主题 ID、重复名称、允许的颜色变量与数值范围。校验通过后才会把色板写入数据库。上传支持 JSON 色板，样式表、脚本、归档和外部资源地址均不接受。
 3. 在下拉列表中选择新主题，再点 **应用到所有管理员**。上传本身不会切换主题。
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
@@ -37,7 +37,7 @@ Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.7`。�
 
 在后台 **系统配置 → 订阅模板 → Loon** 编辑模板，修改后自动保存。`[Proxy]` 段中保留独占一行的 `{{PROXIES}}`，面板会在此填入用户有权使用的兼容节点。策略组里可以用 `{{PROXY_NAMES}}` 引用这些节点，无兼容节点时替换为 `DIRECT`。DNS、分流和远程规则可按 Loon 的配置格式编写。
 
-在用户的订阅链接后添加 `?format=loon-config`。如果已经有查询参数，用 `&format=loon-config`。把生成的 URL 作为 **远程配置** 导入 Loon。用户订阅 API 也会返回 `loon_config_url`。原订阅链接继续用于 Loon 的远程节点订阅。
+在用户的订阅链接后添加 `?format=loon-config`。如果已经有查询参数，用 `&format=loon-config`。把生成的 URL 作为 **远程配置** 导入 Loon。用户订阅 API 也会返回 `loon_config_url`。在 **系统配置 → 订阅设置** 打开 **Loon 通用订阅下发完整配置** 后，Loon 的「远程配置」可直接使用通用订阅链接。此开关默认关闭。打开后，旧的 Loon 远程节点订阅可在链接上添加 `format=loon-nodes`，继续获取节点列表。
 
 ### 部署 MX 节点
 

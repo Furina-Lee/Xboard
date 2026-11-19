@@ -1,26 +1,5 @@
 xboard-admin-theme-page { display: block; }
 
-.xboard-admin-theme-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.xboard-admin-theme-heading p { margin-top: .4rem; }
-
-.xboard-admin-theme-upload {
-  display: grid;
-  justify-items: start;
-  gap: .5rem;
-  max-width: 100%;
-  font-size: .875rem;
-}
-
-.xboard-admin-theme-upload input { max-width: 100%; }
-
 .xboard-admin-theme-status { margin-bottom: 1rem; }
 .xboard-admin-theme-status:empty { display: none; }
 

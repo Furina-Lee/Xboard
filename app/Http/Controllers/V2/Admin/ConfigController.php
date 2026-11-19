@@ -121,6 +121,7 @@ class ConfigController extends Controller
                 'ticket_must_wait_reply' => (bool) admin_setting('ticket_must_wait_reply', 0),
             ],
             'subscribe' => [
+                'loon_full_config_enable' => (bool) admin_setting('loon_full_config_enable', false),
                 'plan_change_enable' => (bool) admin_setting('plan_change_enable', 1),
                 'reset_traffic_method' => (int) admin_setting('reset_traffic_method', 0),
                 'surplus_enable' => (bool) admin_setting('surplus_enable', 1),

@@ -99,17 +99,7 @@
 <body>
   <div id="root"></div>
   <template id="xboard-admin-theme-template" data-endpoint="{{ route('admin-theme.index', [], false) }}">
-    <header class="xboard-admin-theme-heading">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight">后台主题</h1>
-        <p class="text-muted-foreground">所有管理员共用同一套后台主题，其他管理员刷新后即可看到变更。</p>
-      </div>
-      <form class="xboard-admin-theme-upload">
-        <label for="xboard-admin-theme-file">上传主题（JSON，最多 4 KB）</label>
-        <input id="xboard-admin-theme-file" name="theme" type="file" accept=".json,application/json" required>
-        <button class="xboard-admin-theme-button" type="submit" disabled>校验并保存</button>
-      </form>
-    </header>
+    <input type="file" name="theme" accept=".json,application/json" hidden aria-label="上传 JSON 色板">
     <p class="xboard-admin-theme-status text-muted-foreground" role="status"></p>
     <section class="xboard-admin-theme-grid" aria-label="可用的后台主题"></section>
   </template>
