@@ -71,7 +71,7 @@
       <link rel="stylesheet" crossorigin href="/assets/admin/{{ $css }}" />
     @endforeach
     @foreach($locales as $locale)
-      <script src="/assets/admin/{{ $locale }}"></script>
+      <script src="/assets/admin/{{ $locale }}?v={{ $version }}"></script>
     @endforeach
     @foreach($scripts as $js)
       <script type="module" crossorigin src="/assets/admin/{{ $js }}"></script>
@@ -92,28 +92,27 @@
       <style>{!! $adminThemes->css($selectedAdminTheme) !!}</style>
     @endif
   @endif
-  <link rel="stylesheet" href="{{ asset('css/admin-theme-picker.css') }}" />
-  <script src="{{ asset('js/admin-theme-picker.js') }}" defer></script>
+  <link rel="stylesheet" href="{{ asset('css/admin-theme-picker.css') }}?v={{ $version }}" />
+  <script src="{{ asset('js/admin-theme-picker.js') }}?v={{ $version }}" defer></script>
 </head>
 
 <body>
   <div id="root"></div>
-  <details class="xboard-admin-theme-picker" id="xboard-admin-theme-picker"
-    data-endpoint="{{ route('admin-theme.index', [], false) }}"
-    data-selected="{{ $selectedAdminTheme }}" hidden>
-    <summary>后台主题</summary>
-    <form id="xboard-admin-theme-select">
-      <label for="xboard-admin-theme-choice">所有管理员共用的主题</label>
-      <select id="xboard-admin-theme-choice" name="id" required></select>
-      <button type="submit">应用到所有管理员</button>
-    </form>
-    <form id="xboard-admin-theme-upload">
-      <label for="xboard-admin-theme-file">上传主题（JSON，最多 4 KB）</label>
-      <input id="xboard-admin-theme-file" name="theme" type="file" accept=".json,application/json" required>
-      <button type="submit">校验并保存</button>
-    </form>
-    <p id="xboard-admin-theme-status" role="status"></p>
-  </details>
+  <template id="xboard-admin-theme-template" data-endpoint="{{ route('admin-theme.index', [], false) }}">
+    <header class="xboard-admin-theme-heading">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">后台主题</h1>
+        <p class="text-muted-foreground">所有管理员共用同一套后台主题，其他管理员刷新后即可看到变更。</p>
+      </div>
+      <form class="xboard-admin-theme-upload">
+        <label for="xboard-admin-theme-file">上传主题（JSON，最多 4 KB）</label>
+        <input id="xboard-admin-theme-file" name="theme" type="file" accept=".json,application/json" required>
+        <button class="xboard-admin-theme-button" type="submit" disabled>校验并保存</button>
+      </form>
+    </header>
+    <p class="xboard-admin-theme-status text-muted-foreground" role="status"></p>
+    <section class="xboard-admin-theme-grid" aria-label="可用的后台主题"></section>
+  </template>
 </body>
 
 </html>
