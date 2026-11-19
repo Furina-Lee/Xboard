@@ -27,6 +27,7 @@ class NodeWorker
 
     private array $handlers = [
         'pong' => [NodeEventHandlers::class, 'handlePong'],
+        'report.traffic' => [NodeEventHandlers::class, 'handleTrafficReport'],
         'node.status' => [NodeEventHandlers::class, 'handleNodeStatus'],
         'report.devices' => [NodeEventHandlers::class, 'handleDeviceReport'],
         'request.devices' => [NodeEventHandlers::class, 'handleDeviceRequest'],
@@ -195,7 +196,7 @@ class NodeWorker
 
         $conn->send(json_encode([
             'event' => 'auth.success',
-            'data' => ['node_id' => $nodeId],
+            'data' => ['node_id' => $nodeId, 'traffic_report_ack' => true],
         ]));
 
         NodeEventHandlers::pushFullSync($conn, $node);
@@ -251,6 +252,7 @@ class NodeWorker
             'data' => [
                 'machine_id' => $machineId,
                 'node_ids' => $nodeIds,
+                'traffic_report_ack' => true,
             ],
         ]));
 

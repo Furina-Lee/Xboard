@@ -21,6 +21,38 @@ class NodeEventHandlers
         Cache::put("node_ws_alive:{$nodeId}", true, 86400);
     }
 
+    public static function handleTrafficReport(TcpConnection $conn, int $nodeId, array $data): void
+    {
+        $reportId = $data['report_id'] ?? null;
+        $traffic = $data['traffic'] ?? null;
+        if (!is_string($reportId) || !preg_match('/\A[a-f0-9]{32}\z/', $reportId)
+            || !is_array($traffic) || !$traffic || count($traffic) > 50000) {
+            return;
+        }
+
+        $node = Server::find($nodeId);
+        if (!$node) {
+            $conn->send(json_encode([
+                'event' => 'report.traffic.ack',
+                'data' => ['node_id' => $nodeId, 'report_id' => $reportId, 'accepted' => false],
+            ]));
+            return;
+        }
+
+        try {
+            ServerService::touchNode($node);
+            ServerService::processTraffic($node, $traffic, $reportId);
+        } catch (\Throwable $error) {
+            report($error);
+            return;
+        }
+
+        $conn->send(json_encode([
+            'event' => 'report.traffic.ack',
+            'data' => ['node_id' => $nodeId, 'report_id' => $reportId, 'accepted' => true],
+        ]));
+    }
+
     /**
      * Handle node status update
      */
