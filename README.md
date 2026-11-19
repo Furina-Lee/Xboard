@@ -31,7 +31,7 @@
 
 机器安装命令默认使用 [Furina-Lee/Xboard-Node](https://github.com/Furina-Lee/Xboard-Node) 的安装脚本，由脚本下载该仓库的最新正式发布。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。安装地址须为兼容脚本的 HTTPS 原始文件地址。需要固定版本时，可填入对应的发布标签，面板会将其作为 `--version` 参数传给脚本。清空字段并保存可恢复部署默认值。如果在 `.env` 中设置过同名变量，也需清空相应变量才能恢复内置默认值。自有脚本须支持机器模式及 `--machine-id`，启用版本覆盖时还须支持 `--version`。
 
-Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.6`。机器模式使用面板地址、SID 和机器 Token，分别对应 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`，也可以在 Compose 挂载的配置文件中填写。面板中的安装地址和版本字段用于 systemd 安装命令。参见 [节点 Docker Compose 说明](https://github.com/Furina-Lee/Xboard-Node/tree/compose)。
+Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.7`。机器模式使用面板地址、SID 和机器 Token，分别对应 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`，也可以在 Compose 挂载的配置文件中填写。面板中的安装地址和版本字段用于 systemd 安装命令。参见 [节点 Docker Compose 说明](https://github.com/Furina-Lee/Xboard-Node/tree/compose)。
 
 ### Loon 完整配置
 
@@ -41,7 +41,7 @@ Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.6`。�
 
 ### 部署 MX 节点
 
-使用 Xboard-Node `v1.13-furina.6` 或更新版本。在面板创建 MX 节点并绑定机器，节点进程会自动获取端口、传输、TLS 配置和用户列表。节点安装和更新方法见 [Xboard-Node 中文 README](https://github.com/Furina-Lee/Xboard-Node/blob/dev/README.md#在面板启用-mx)。
+使用 Xboard-Node `v1.13-furina.7` 或更新版本。在面板创建 MX 节点并绑定机器，节点进程会自动获取端口、传输、TLS 配置和用户列表。节点安装和更新方法见 [Xboard-Node 中文 README](https://github.com/Furina-Lee/Xboard-Node/blob/dev/README.md#在面板启用-mx)。
 
 ### 升级到流量配额修复版
 
@@ -51,7 +51,7 @@ Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.6`。�
 docker compose exec xboard php artisan migrate:status | grep node_traffic_reports
 ```
 
-若部署使用多个 Compose 文件，请沿用实际部署的全部 `-f` 参数。确认迁移完成后，再逐台将节点升级到 `v1.13-furina.6`。新生成的安装命令会使用面板配置的版本，已运行节点请按部署方式升级。[systemd 节点安装和升级](https://github.com/Furina-Lee/Xboard-Node/blob/dev/README.md) · [Docker Compose 节点安装和升级](https://github.com/Furina-Lee/Xboard-Node/tree/compose)
+若部署使用多个 Compose 文件，请沿用实际部署的全部 `-f` 参数。确认迁移完成后，再逐台将节点升级到 `v1.13-furina.7`。新生成的安装命令会使用面板配置的版本，已运行节点请按部署方式升级。[systemd 节点安装和升级](https://github.com/Furina-Lee/Xboard-Node/blob/dev/README.md) · [Docker Compose 节点安装和升级](https://github.com/Furina-Lee/Xboard-Node/tree/compose)
 
 ## Docker 镜像
 
