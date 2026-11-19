@@ -27,11 +27,17 @@
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
-## 节点安装
+## 选择节点部署方式
 
-机器安装命令默认使用 [独立 MX WebSocket 节点安装器](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md)，通过机器 Token 发现该机器下已启用的节点。安装器会复用节点机上已有的原版 MX 二进制。全新机器应先把对应架构的 `proxy-node` 解压到执行命令的目录。面板需启用 WebSocket，反代需支持 `/ws`，并执行已有的 `node_traffic_reports` 数据库迁移，才能使用带回执的 WebSocket 流量上报。在 **系统配置 → 节点设置** 可填写 `XBOARD_NODE_INSTALLER_URL` 和 `XBOARD_NODE_INSTALLER_VERSION`，点击 **保存节点安装设置** 后立即用于新生成的命令。安装地址须为兼容脚本的 HTTPS 原始文件地址。需要固定版本时，可填入对应的发布标签，面板会将其作为 `--version` 参数传给脚本。清空字段并保存可恢复部署默认值。如果在 `.env` 中设置过同名变量，也需清空相应变量才能恢复内置默认值。自有脚本须支持机器模式及 `--machine-id`，启用版本覆盖时还须支持 `--version`。
+| 场景 | 部署方式 | 凭据 |
+| --- | --- | --- |
+| 新装机器，或一台机器管理多个节点 | [从服务器管理一键安装](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#a-服务器管理一键安装) | 机器 ID 和机器 Token，面板自动加入命令 |
+| 新装独立单节点或单独测试 MX | [手动安装独立单节点](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#b-手动安装独立单节点) | 节点 ID 和面板服务端通信密钥 |
+| 维护已有的旧版 Xboard-Node 容器 | [旧版节点 Docker Compose](https://github.com/Furina-Lee/MX-WebSocket-Node/tree/compose) | 沿用旧版部署的配置 |
 
-继续运行旧版 Xboard-Node 容器的节点仍可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.7`。该镜像使用旧版节点程序，机器模式仍使用 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`。见 [旧版节点 Docker Compose 说明](https://github.com/Furina-Lee/MX-WebSocket-Node/tree/compose)。
+新版 MX 节点需使用节点机上已有的原版 `proxy-node`，全新机器先解压对应架构的二进制。面板需启用 WebSocket，反代需支持 `/ws` 升级，并执行 `node_traffic_reports` 数据库迁移。
+
+在 **系统配置 → 节点设置** 可覆盖节点安装地址和版本。默认地址为 `https://raw.githubusercontent.com/Furina-Lee/MX-WebSocket-Node/dev/install.sh`。版本覆盖会传给安装脚本作为 `--version`，仅使用包含新版安装器及配套文件的 Git 标签或提交。清空并保存可恢复部署默认；如部署的 `.env` 仍定义 `XBOARD_NODE_INSTALLER_URL` 或 `XBOARD_NODE_INSTALLER_VERSION`，也需核对其中的值。自定义脚本须兼容 `--mode machine --panel --token --machine-id`，固定版本时还须兼容 `--version`。
 
 ### Loon 完整配置
 
