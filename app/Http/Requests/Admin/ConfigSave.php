@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\LoonTemplate;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConfigSave extends FormRequest
@@ -122,7 +123,16 @@ class ConfigSave extends FormRequest
      */
     public function rules()
     {
-        return self::RULES;
+        return self::RULES + [
+            'subscribe_template_loon' => [
+                'bail', 'nullable', 'string', 'max:65535',
+                static function (string $attribute, string $value, \Closure $fail): void {
+                    if (!LoonTemplate::isValid($value)) {
+                        $fail('Loon 模板必须在 [Proxy] 段独占一行填写 {{PROXIES}}，且只出现一次。');
+                    }
+                },
+            ],
+        ];
     }
 
     public function messages()

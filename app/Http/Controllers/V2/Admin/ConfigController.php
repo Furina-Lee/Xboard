@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V2\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Models\SubscribeTemplate;
+use App\Services\LoonTemplate;
 use App\Services\MailService;
 use App\Services\NodeInstallerSettings;
 use App\Services\TelegramService;
@@ -206,7 +207,8 @@ class ConfigController extends Controller
                 'subscribe_template_clashmeta' => subscribe_template('clashmeta') ?? '',
                 'subscribe_template_stash' => subscribe_template('stash') ?? '',
                 'subscribe_template_surge' => subscribe_template('surge') ?? '',
-                'subscribe_template_surfboard' => subscribe_template('surfboard') ?? ''
+                'subscribe_template_surfboard' => subscribe_template('surfboard') ?? '',
+                'subscribe_template_loon' => LoonTemplate::content()
             ]
         ];
     }
@@ -222,6 +224,7 @@ class ConfigController extends Controller
             'subscribe_template_stash' => 'stash',
             'subscribe_template_surge' => 'surge',
             'subscribe_template_surfboard' => 'surfboard',
+            'subscribe_template_loon' => 'loon',
         ];
 
         foreach ($data as $k => $v) {

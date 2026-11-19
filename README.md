@@ -33,6 +33,12 @@
 
 Docker 部署节点可使用 `ghcr.io/furina-lee/xboard-node:v1.13-furina.6`。机器模式使用面板地址、SID 和机器 Token，分别对应 `API_HOST`、`MACHINE_ID` 和 `MACHINE_TOKEN`，也可以在 Compose 挂载的配置文件中填写。面板中的安装地址和版本字段用于 systemd 安装命令。参见 [节点 Docker Compose 说明](https://github.com/Furina-Lee/Xboard-Node/tree/compose)。
 
+### Loon 完整配置
+
+在后台 **系统配置 → 订阅模板 → Loon** 编辑模板，修改后自动保存。`[Proxy]` 段中保留独占一行的 `{{PROXIES}}`，面板会在此填入用户有权使用的兼容节点。策略组里可以用 `{{PROXY_NAMES}}` 引用这些节点，无兼容节点时替换为 `DIRECT`。DNS、分流和远程规则可按 Loon 的配置格式编写。
+
+在用户的订阅链接后添加 `?format=loon-config`。如果已经有查询参数，用 `&format=loon-config`。把生成的 URL 作为 **远程配置** 导入 Loon。用户订阅 API 也会返回 `loon_config_url`。原订阅链接继续用于 Loon 的远程节点订阅。
+
 ### 部署 MX 节点
 
 使用 Xboard-Node `v1.13-furina.6` 或更新版本。在面板创建 MX 节点并绑定机器，节点进程会自动获取端口、传输、TLS 配置和用户列表。节点安装和更新方法见 [Xboard-Node 中文 README](https://github.com/Furina-Lee/Xboard-Node/blob/dev/README.md#在面板启用-mx)。

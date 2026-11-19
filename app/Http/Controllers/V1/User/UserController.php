@@ -155,6 +155,7 @@ class UserController extends Controller
             }
         }
         $user['subscribe_url'] = Helper::getSubscribeUrl($user['token']);
+        $user['loon_config_url'] = url()->query($user['subscribe_url'], ['format' => 'loon-config']);
         $userService = new UserService();
         $user['reset_day'] = $userService->getResetDay($user);
         $user = HookManager::filter('user.subscribe.response', $user);

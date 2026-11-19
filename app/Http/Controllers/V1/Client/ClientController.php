@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Protocols\General;
+use App\Protocols\Loon;
 use App\Services\Plugin\HookManager;
 use App\Services\ServerService;
 use App\Services\UserService;
@@ -39,6 +40,7 @@ class ClientController extends Controller
             'types' => ['nullable', 'string'],
             'filter' => ['nullable', 'string'],
             'flag' => ['nullable', 'string'],
+            'format' => ['nullable', 'string'],
         ]);
 
         $user = $request->user();
@@ -61,11 +63,18 @@ class ClientController extends Controller
 
         $clientInfo = $this->getClientInfo($request);
 
+        $loonConfig = $request->input('format') === 'loon-config';
+        if ($loonConfig && $clientInfo['name'] !== 'loon') {
+            $clientInfo['name'] = 'loon';
+            $clientInfo['version'] = null;
+        }
+
         $requestedTypes = $this->parseRequestedTypes($request->input('types'));
         $filterKeywords = $this->parseFilterKeywords($request->input('filter'));
 
-        $protocolClassName = app('protocols.manager')->matchProtocolClassName($clientInfo['flag'])
-            ?? General::class;
+        $protocolClassName = $loonConfig ? Loon::class : (
+            app('protocols.manager')->matchProtocolClassName($clientInfo['flag']) ?? General::class
+        );
 
         $serversFiltered = $this->filterServers(
             servers: $servers,
@@ -73,7 +82,9 @@ class ClientController extends Controller
             filterKeywords: $filterKeywords
         );
 
-        $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
+        if (!$loonConfig) {
+            $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
+        }
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);
 
         // Instantiate the protocol class with filtered servers and client info
@@ -85,7 +96,7 @@ class ClientController extends Controller
             'userAgent' => $clientInfo['flag'] ?? null
         ]);
 
-        return $protocolInstance->handle();
+        return $loonConfig ? $protocolInstance->handleConfig() : $protocolInstance->handle();
     }
 
     /**

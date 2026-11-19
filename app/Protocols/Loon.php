@@ -4,6 +4,7 @@ namespace App\Protocols;
 
 use App\Support\AbstractProtocol;
 use App\Models\Server;
+use App\Services\LoonTemplate;
 
 class Loon extends AbstractProtocol
 {
@@ -25,38 +26,44 @@ class Loon extends AbstractProtocol
 
     public function handle()
     {
-        $servers = $this->servers;
+        $nodes = '';
+        foreach ($this->servers as $server) {
+            $nodes .= $this->buildProxy($server);
+        }
+
+        return $this->subscriptionResponse($nodes);
+    }
+
+    public function handleConfig()
+    {
+        return $this->subscriptionResponse(
+            LoonTemplate::render(LoonTemplate::content(), $this->servers, $this->buildProxy(...))
+        )->header('Cache-Control', 'private, no-store');
+    }
+
+    private function subscriptionResponse(string $content)
+    {
         $user = $this->user;
 
-        $uri = '';
-
-        foreach ($servers as $item) {
-            if (
-                $item['type'] === Server::TYPE_SHADOWSOCKS
-            ) {
-                $uri .= self::buildShadowsocks($item['password'], $item);
-            }
-            if ($item['type'] === Server::TYPE_VMESS) {
-                $uri .= self::buildVmess($item['password'], $item);
-            }
-            if ($item['type'] === Server::TYPE_TROJAN) {
-                $uri .= self::buildTrojan($item['password'], $item);
-            }
-            if ($item['type'] === Server::TYPE_HYSTERIA) {
-                $uri .= self::buildHysteria($item['password'], $item, $user);
-            }
-            if ($item['type'] === Server::TYPE_VLESS) {
-                $uri .= self::buildVless($item['password'], $item);
-            }
-            if ($item['type'] === Server::TYPE_ANYTLS) {
-                $uri .= self::buildAnyTLS($item['password'], $item);
-            }
-        }
-        return response($uri)
+        return response($content)
             ->header('content-type', 'text/plain')
             ->header('Subscription-Userinfo', "upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}");
     }
 
+    private function buildProxy(array $server): ?string
+    {
+        $password = $server['password'];
+
+        return match ($server['type']) {
+            Server::TYPE_SHADOWSOCKS => self::buildShadowsocks($password, $server),
+            Server::TYPE_VMESS => self::buildVmess($password, $server),
+            Server::TYPE_TROJAN => self::buildTrojan($password, $server),
+            Server::TYPE_HYSTERIA => self::buildHysteria($password, $server, $this->user),
+            Server::TYPE_VLESS => self::buildVless($password, $server),
+            Server::TYPE_ANYTLS => self::buildAnyTLS($password, $server),
+            default => null,
+        };
+    }
 
     public static function buildShadowsocks($password, $server)
     {
