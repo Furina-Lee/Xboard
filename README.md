@@ -27,6 +27,12 @@
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
+## 面板与节点的升级顺序
+
+1. 按现有部署方式更新 Xboard 镜像并重新创建容器。保留原部署目录、数据库及 Compose 的 `-f` 参数，确认 `node_traffic_reports` 数据库迁移已执行。
+2. 在「系统配置 → 节点设置」核对安装地址和版本覆盖，再去「服务器管理」复制最新的安装命令。已装新版独立节点的机器按 [节点端就地升级](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#更新已安装的新版节点) 更新程序。
+3. 刷新实际客户端订阅，选中目标节点后完成一次真实下载，再比对账号已用流量。面板显示在线、节点 TCP 端口可达和客户端延迟测试都不能代替这项验收。
+
 ## 选择节点部署方式
 
 | 场景 | 部署方式 | 凭据 |
@@ -35,7 +41,7 @@
 | 新装独立单节点或单独测试 MX | [手动安装独立单节点](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#b-手动安装独立单节点) | 节点 ID 和面板服务端通信密钥 |
 | 维护已有的旧版 Xboard-Node 容器 | [旧版节点 Docker Compose](https://github.com/Furina-Lee/MX-WebSocket-Node/tree/compose) | 沿用旧版部署的配置 |
 
-新版 MX 节点需使用节点机上已有的原版 `proxy-node`，全新机器先解压对应架构的二进制。面板需启用 WebSocket，反代需支持 `/ws` 升级，并执行 `node_traffic_reports` 数据库迁移。
+新版 MX 节点需使用节点机上已有的原版 `proxy-node`，全新机器先解压对应架构的二进制。流量上报需要执行 `node_traffic_reports` 数据库迁移。WebSocket 实时下发需要面板开关、worker 和 `/ws` 反代同时可用。未配置 WebSocket 时，当前节点端可通过同一面板 HTTPS 地址获取配置并上报流量。
 
 在 **系统配置 → 节点设置** 可覆盖节点安装地址和版本。默认地址为 `https://raw.githubusercontent.com/Furina-Lee/MX-WebSocket-Node/dev/install.sh`。版本覆盖会传给安装脚本作为 `--version`，仅使用包含新版安装器及配套文件的 Git 标签或提交。清空并保存可恢复部署默认；如部署的 `.env` 仍定义 `XBOARD_NODE_INSTALLER_URL` 或 `XBOARD_NODE_INSTALLER_VERSION`，也需核对其中的值。自定义脚本须兼容 `--mode machine --panel --token --machine-id`，固定版本时还须兼容 `--version`。
 
@@ -58,6 +64,10 @@ SNI 输入框右侧的按钮可生成形如 `mx-<随机值>.example` 的合法�
 #### MundoRDP 配置模板
 
 MX 节点的传输选择切到 MundoRDP 后，协议配置立即载入一个只含 `username` 的模板。用户名由 `user` 加 12 位随机十六进制字符组成。打开已有 MundoRDP 节点时会保留现有配置；可以在协议配置编辑器中主动插入新模板。
+
+#### MX 的 TLS 和订阅链接
+
+普通 TLS 的 MX 配置不会下发 `tls_settings.private_key`。在面板的 TLS 设置开启「允许不安全」时，生成的 MX 链接带 `allowInsecure=1`。这个参数交给客户端决定是否跳过证书校验。更改节点的传输、SNI 或证书设置后，应刷新客户端订阅。生产环境使用常规证书校验时，SNI 应与服务端证书匹配。
 
 ### 升级到流量配额修复版
 
