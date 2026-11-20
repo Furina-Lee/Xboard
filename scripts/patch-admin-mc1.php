@@ -6,8 +6,11 @@ $manifestFile = $root . '/manifest.json';
 $manifest = json_decode(file_get_contents($manifestFile), true, 512, JSON_THROW_ON_ERROR);
 $entry = $manifest['index.html']['file'];
 $source = file_get_contents($root . '/' . $entry);
-if (str_contains($source, 'function xboardGenerateMc1Template(')) {
+if (str_contains($source, 'function xboardGenerateMundoRdpTemplate(')) {
     exit(0);
+}
+if (str_contains($source, 'function xboardGenerateMc1Template(')) {
+    $source = file_get_contents($root . '/assets/index-023810aa2cb7.js');
 }
 
 function replaceOnce(string $source, string $before, string $after): string
@@ -23,6 +26,15 @@ $helpers = <<<'JS'
 function xboardMc1Random(size) {
   return Array.from(crypto.getRandomValues(new Uint8Array(size)),
     byte => byte.toString(16).padStart(2, "0")).join("");
+}
+function xboardGenerateMundoRdpTemplate() {
+  return {username: "user" + xboardMc1Random(6)};
+}
+function xboardChangeMxTransport(form, field, next) {
+  if (next === "mundordp" && field.value !== next) {
+    form.setValue("network_settings", xboardGenerateMundoRdpTemplate(), {shouldDirty: true});
+  }
+  field.onChange(next);
 }
 function xboardGenerateMc1Sni() {
   return "mx-" + xboardMc1Random(6) + ".example";
@@ -69,11 +81,11 @@ function xboardMc1SniControl(form, field, t) {
 JS;
 
 $source = replaceOnce($source, 'function m4t({dialogTrigger:e,value:t,setValue:n,templateType:i})',
-    "\n" . $helpers . "\n" . 'function m4t({dialogTrigger:e,value:t,setValue:n,templateType:i,mc1Template:mxTemplate})');
+    "\n" . $helpers . "\n" . 'function m4t({dialogTrigger:e,value:t,setValue:n,templateType:i,mc1Template:mxTemplate,mundoRdpTemplate:rdpTemplate})');
 $source = replaceOnce($source, 'case"xhttp":return["xhttp"];default:return[]',
-    'case"xhttp":return["xhttp"];case"mc1":return mxTemplate?["mc1"]:[];default:return[]');
+    'case"xhttp":return["xhttp"];case"mc1":return mxTemplate?["mc1"]:[];case"mundordp":return rdpTemplate?["mundordp"]:[];default:return[]');
 $source = replaceOnce($source, 'const e=JSON.stringify(t.content,null,2);l(e),d(null)',
-    'const a=JSON.stringify(e==="mc1"&&mxTemplate?mxTemplate():t.content,null,2);l(a),d(null)');
+    'const a=JSON.stringify(e==="mc1"&&mxTemplate?mxTemplate():e==="mundordp"&&rdpTemplate?rdpTemplate():t.content,null,2);l(a),d(null)');
 $source = replaceOnce($source, 'mx:{schema:C4t(e,t),component:k4t}',
     'mx:{schema:C4t(e,t),component:xboardMxForm}');
 $source = replaceOnce($source, 'k4t=({form:e,t:t})=>',
@@ -86,8 +98,11 @@ if (substr_count($source, 'templateType:e.watch("network")})]') < 1) {
 }
 $position = strpos($source, 'templateType:e.watch("network")})]', strpos($source, 'k4t=({form:e,t:t,mxMode:mxMode})'));
 $source = substr_replace($source,
-    'templateType:e.watch("network"),mc1Template:mxMode?()=>xboardGenerateMc1Template(e):undefined})]',
+    'templateType:e.watch("network"),mc1Template:mxMode?()=>xboardGenerateMc1Template(e):undefined,mundoRdpTemplate:mxMode?xboardGenerateMundoRdpTemplate:undefined})]',
     $position, strlen('templateType:e.watch("network")})]'));
+
+$transportControl = 'onValueChange:n.onChange,value:n.value,children:[Q.jsx(Czt,{className:"font-mono text-xs",children:Q.jsx(wzt,{placeholder:t("dynamic_form.vmess.network.placeholder")})})';
+$source = replaceOnce($source, $transportControl, str_replace('onValueChange:n.onChange', 'onValueChange:mxMode?next=>xboardChangeMxTransport(e,n,next):n.onChange', $transportControl));
 
 $name = 'assets/index-mc1-' . substr(hash('sha256', $source), 0, 12) . '.js';
 file_put_contents($root . '/' . $name, $source);
