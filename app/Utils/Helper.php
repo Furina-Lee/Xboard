@@ -309,7 +309,7 @@ class Helper
                 if ($serverName !== '') {
                     $config['sni'] = $serverName;
                 }
-                if (data_get($settings, 'allow_insecure', data_get($tlsSettings, 'allow_insecure', false))) {
+                if (data_get($tlsSettings, 'allow_insecure', data_get($settings, 'allow_insecure', false))) {
                     $config['allowInsecure'] = '1';
                 }
                 break;

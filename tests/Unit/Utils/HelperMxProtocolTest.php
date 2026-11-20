@@ -37,6 +37,28 @@ class HelperMxProtocolTest extends TestCase
         $this->assertStringContainsString('#Mundo%20MX', $uri);
     }
 
+    public function test_mx_uri_prefers_tls_allow_insecure_and_supports_the_legacy_setting(): void
+    {
+        $cases = [
+            ['allow_insecure' => false, 'tls_settings' => ['allow_insecure' => true]],
+            ['allow_insecure' => true, 'tls_settings' => ['allow_insecure' => false]],
+            ['allow_insecure' => true],
+            [],
+        ];
+
+        foreach ($cases as $index => $settings) {
+            $uri = Helper::buildMxUri('user-token', [
+                'host' => 'edge.example.com',
+                'port' => 443,
+                'name' => 'MX',
+                'protocol_settings' => $settings + ['tls' => 1, 'network' => 'mundordp'],
+            ]);
+
+            parse_str(parse_url($uri, PHP_URL_QUERY), $query);
+            $this->assertSame(in_array($index, [0, 2], true) ? '1' : null, $query['allowInsecure'] ?? null);
+        }
+    }
+
     public function test_mundo_rdp_transport_defaults_username_and_casts_boolean_values(): void
     {
         $config = [];
