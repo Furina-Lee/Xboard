@@ -346,7 +346,7 @@ EOF
     cat >> "$OVERRIDE" <<'EOF'
     environment:
       ENABLE_CADDY: "false"
-      ENABLE_WS_SERVER: "false"
+      ENABLE_WS_SERVER: "true"
       OCTANE_PORT: "7001"
 EOF
   fi

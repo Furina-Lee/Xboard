@@ -57,7 +57,7 @@ RUN composer install --no-cache --no-dev --no-security-blocking && \
 ENV ENABLE_WEB=true \
     ENABLE_HORIZON=true \
     ENABLE_REDIS=true \
-    ENABLE_WS_SERVER=false \
+    ENABLE_WS_SERVER=true \
     ENABLE_CADDY=false \
     OCTANE_HOST=0.0.0.0 \
     OCTANE_PORT=7001 \
@@ -67,7 +67,7 @@ ENV ENABLE_WEB=true \
     WS_HOST=0.0.0.0 \
     WS_PORT=8076
 
-EXPOSE 7001
+EXPOSE 7001 8076
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

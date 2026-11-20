@@ -61,18 +61,63 @@ docker compose exec xboard php artisan migrate:status | grep node_traffic_report
 
 ## Docker 镜像
 
-两个版本使用相同的 Xboard 面板代码，均支持 MX/Mundo、内置 Redis 和 Linux AMD64 / ARM64。区别在于 HTTP 入口和节点 WebSocket 的默认配置。
+两个版本使用相同的 Xboard 面板代码，均支持 MX/Mundo、内置 Redis 和 Linux AMD64 / ARM64。两种镜像都默认启动节点 WebSocket worker，HTTP 和 WebSocket 的入口方式不同。
 
 | | 标准版 | 完整版 |
 | --- | --- | --- |
 | 镜像 | `ghcr.io/furina-lee/xboard:standard` | `ghcr.io/furina-lee/xboard:full` |
 | HTTP 入口 | Octane 直接监听 `7001` | Caddy 监听 `7001`，转发给 Octane |
-| 节点 WebSocket | 独立服务默认关闭 | 独立服务默认开启，由 Caddy 转发 `/ws`，沿用 `7001` |
-| 适用场景 | 1Panel OpenResty、aaPanel Nginx 等外部反向代理，以及直接访问面板 | 需要默认启用 Xboard-Node WebSocket 入口的部署 |
+| 节点 WebSocket | worker 默认开启，外部反代将 `/ws` 转发到 `8076` | worker 默认开启，内置 Caddy 在 `7001` 处理 `/ws` |
+| 适用场景 | 1Panel OpenResty、aaPanel Nginx 等外部反向代理，以及直接访问面板 | 希望通过同一个容器入口代理 HTTP 和 WebSocket |
 
 完整版的 Caddy 在容器内提供 HTTP 转发。公网 HTTPS 可交由宿主机上的反向代理处理。WebSocket 入口与 MX 节点兼容性还取决于节点端实现。
 
 GitHub Actions 从 `master` 构建镜像。可用 `standard-<SHA>` 或 `full-<SHA>` 固定版本。兼容标签 `1panel` 对应标准版，`latest` 对应完整版。
+
+### 节点 WebSocket 与 1Panel 反代
+
+| 参数 | 标准版默认值 | 完整版默认值 | 用途 |
+| --- | --- | --- | --- |
+| `ENABLE_WS_SERVER` | `true` | `true` | 是否启动节点 WebSocket worker |
+| `ENABLE_CADDY` | `false` | `true` | 是否使用容器内 Caddy |
+| `OCTANE_PORT` | `7001` | `7002` | 面板 HTTP 服务在容器内的监听端口 |
+| `WS_HOST` | `0.0.0.0` | `127.0.0.1` | worker 在容器内的绑定地址 |
+| `WS_PORT` | `8076` | `8076` | worker 在容器内的监听端口 |
+| `CADDY_LISTEN_PORT` | 未使用 | `7001` | 完整版容器的 HTTP / WebSocket 统一入口 |
+
+Xboard 后台「系统配置 → 节点配置」的 WebSocket 开关与容器变量分开生效。后台需要开启 WebSocket，且能从缓存读取 worker 心跳，才会向节点公布 WebSocket 地址。使用 HTTPS 面板时，节点应收到可访问的 `wss://你的面板域名/ws`。若 TLS 在反代终止，请正确转发 `X-Forwarded-Proto`；也可在后台显式设置完整的 `wss://` 地址。
+
+**1Panel / 标准版**
+
+1. 在「容器 → 编排」检查 Xboard 服务的 Compose 配置。旧编排或旧迁移生成的 override 可能仍有 `ENABLE_WS_SERVER: "false"`，需要改为 `"true"` 或删除该覆盖。要应用镜像或环境变量变更，请重新创建容器。单纯重启不会加载新的 Compose 环境变量。
+2. 宿主机运行 OpenResty 时，保留现有 HTTP 映射，并增加 `127.0.0.1:8076:8076`。新版 [1Panel Compose 模板](./compose.1panel.sample.yaml) 已包含此映射。若已有端口占用，可用 `127.0.0.1:18076:8076`，并把反代上游端口改成 `18076`。如果反代本身在容器内，且与 Xboard 在同一 Docker 网络，用 Xboard 容器的网络别名和 `8076`，不要用反代容器自己的 `127.0.0.1`。
+3. 在 1Panel 对应网站的 OpenResty 配置中，站点原来的 HTTP 上游继续指向 `7001`。在同一个 `server` 块内添加或修改下面的 `/ws` 规则。此例适用于宿主机上的 OpenResty。
+
+```nginx
+location = /ws {
+    proxy_pass http://127.0.0.1:8076;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+    access_log off;
+}
+```
+
+**完整版**
+
+外部 HTTPS 反代只需将面板 HTTP 和 `/ws` 都送到 `7001`，并传递 WebSocket 升级头。容器内 Caddy 会把 `/ws` 转到 worker，无需向宿主机发布 `8076`。
+
+**验收**
+
+```bash
+docker compose ps
+docker compose logs --tail=100 xboard | grep -Ei 'Starting services|ws-server|websocket'
+```
+
+容器启动日志应出现 `ws=true`，随后出现 `ws-server` 进入 `RUNNING` 的记录。若 worker 已运行但面板依然返回 `websocket.enabled=false`，检查后台开关及 Web 与 worker 是否使用同一缓存连接和前缀。若已经返回地址却无法连接，检查 HTTPS 证书、`/ws` 代理和访问规则。最后在节点机确认日志出现 `Machine WebSocket connected with traffic acknowledgements`，用测试节点产生一笔流量并到面板确认入账。
 
 ## 全新安装
 
