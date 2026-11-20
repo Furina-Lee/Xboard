@@ -89,6 +89,23 @@ class HelperMxProtocolTest extends TestCase
         }
     }
 
+    public function test_mc1_defaults_follow_sni_and_keep_existing_paths_on_save(): void
+    {
+        $fresh = Helper::withMc1Defaults(['tls_settings' => ['server_name' => 'edge.example.com']]);
+        $transport = $fresh['network_settings'];
+
+        $this->assertSame('edge.example.com', $transport['host']);
+        $this->assertSame('auto', $transport['mode']);
+        $this->assertMatchesRegularExpression('/^\/[0-9a-f]{16}$/', $transport['path']);
+        $this->assertSame($fresh, Helper::withMc1Defaults($fresh));
+        $this->assertNotSame($transport['path'], Helper::withMc1Defaults($fresh, newPath: true)['network_settings']['path']);
+
+        $random = Helper::withMc1Defaults(['network_settings' => ['host' => 'custom.example', 'path' => '/keep']]);
+        $this->assertMatchesRegularExpression('/^mx-[0-9a-f]{12}\.example$/', $random['tls_settings']['server_name']);
+        $this->assertSame('custom.example', $random['network_settings']['host']);
+        $this->assertSame('/keep', $random['network_settings']['path']);
+    }
+
     public function test_mundo_rdp_transport_defaults_username_and_casts_boolean_values(): void
     {
         $config = [];

@@ -49,6 +49,12 @@
 
 在面板创建并启用 MX 节点，绑定到目标机器，再从 **服务器管理** 复制机器安装命令。新版独立节点会发现已启用的节点并获取配置。准备原版 `proxy-node` 与核验 WebSocket 的步骤见 [MX WebSocket 节点安装说明](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md)。
 
+#### MC1 配置模板
+
+选择 MX 的 Mundo Connect 1 传输后，协议配置编辑器可插入 MC1 模板。默认 `mode` 为 `auto`，`host` 取 TLS 的 SNI，`path` 为斜杠加 16 位随机十六进制字符。每次插入模板或复制节点会生成新的路径。保存已有节点时保留明确填写的路径和 Host。
+
+SNI 输入框右侧的按钮可生成形如 `mx-<随机值>.example` 的合法域名。该名称用于配置，无需 DNS 解析。若启用常规证书校验，应使用与实际服务端证书匹配的 SNI。无 Docker 的部署在更新管理后台文件后，可运行 `php scripts/patch-admin-mc1.php` 生成新版管理后台资源。
+
 ### 升级到流量配额修复版
 
 先在面板部署目录按[更新现有 Docker 部署](#更新现有-docker-部署)升级 Xboard。更新脚本会备份数据库并执行迁移。面板恢复访问后，确认配额上报迁移状态为 **Ran**：

@@ -45,6 +45,7 @@ WORKDIR /www
 COPY .docker /
 
 COPY . /www
+RUN php scripts/patch-admin-mc1.php
 RUN test -f /www/.env.example && \
     test -d /www/public/assets/admin/assets && \
     test -f /www/public/assets/admin/themes/base.css && \

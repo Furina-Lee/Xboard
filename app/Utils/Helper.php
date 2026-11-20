@@ -365,6 +365,33 @@ class Helper
             . '#' . self::encodeURIComponent($server['name']) . "\r\n";
     }
 
+    public static function withMc1Defaults(array $settings, bool $newPath = false): array
+    {
+        $tlsSettings = $settings['tls_settings'] ?? [];
+        $networkSettings = $settings['network_settings'] ?? [];
+        $sni = trim((string) ($tlsSettings['server_name'] ?? ''));
+        if ($sni === '') {
+            $sni = trim((string) ($settings['server_name'] ?? '')) ?: 'mx-' . bin2hex(random_bytes(6)) . '.example';
+        }
+        $tlsSettings['server_name'] = $sni;
+
+        if (trim((string) ($networkSettings['host'] ?? '')) === '') {
+            $networkSettings['host'] = $sni;
+        }
+        if (trim((string) ($networkSettings['mode'] ?? '')) === '') {
+            $networkSettings['mode'] = 'auto';
+        }
+        if ($newPath || trim((string) ($networkSettings['path'] ?? '')) === '') {
+            $networkSettings['path'] = '/' . bin2hex(random_bytes(8));
+        }
+
+        $settings['server_name'] = $sni;
+        $settings['tls_settings'] = $tlsSettings;
+        $settings['network_settings'] = $networkSettings;
+
+        return $settings;
+    }
+
     public static function configureMc1Settings(array $settings, array &$config, string $defaultHost = ''): void
     {
         $config['path'] = $settings['path'] ?? '/';

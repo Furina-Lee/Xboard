@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\ServerSave;
 use App\Models\Server;
 use App\Models\ServerGroup;
 use App\Services\ServerService;
+use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +53,10 @@ class ManageController extends Controller
     public function save(ServerSave $request)
     {
         $params = $request->validated();
+        if ($params['type'] === Server::TYPE_MX && data_get($params, 'protocol_settings.network') === 'mc1') {
+            $params['protocol_settings'] = Helper::withMc1Defaults($params['protocol_settings']);
+        }
+
         if ($request->input('id')) {
             $server = Server::find($request->input('id'));
             if (!$server) {
@@ -277,6 +282,9 @@ class ManageController extends Controller
         }
 
         $copiedServer = $server->replicate();
+        if ($server->type === Server::TYPE_MX && data_get($server->protocol_settings, 'network') === 'mc1') {
+            $copiedServer->protocol_settings = Helper::withMc1Defaults($server->protocol_settings, newPath: true);
+        }
         $copiedServer->show = 0;
         $copiedServer->code = null;
         $copiedServer->u = 0;
