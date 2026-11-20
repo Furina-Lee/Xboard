@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Utils;
 
+use App\Models\Server;
+use App\Services\ServerService;
 use App\Utils\Helper;
 use Tests\TestCase;
 
@@ -56,6 +58,34 @@ class HelperMxProtocolTest extends TestCase
 
             parse_str(parse_url($uri, PHP_URL_QUERY), $query);
             $this->assertSame(in_array($index, [0, 2], true) ? '1' : null, $query['allowInsecure'] ?? null);
+        }
+    }
+
+    public function test_mx_server_config_only_sends_private_keys_for_explicit_reality_modes(): void
+    {
+        foreach ([[0, 'mc1', false], [1, 'mc1', false], [2, 'mc1', true], [1, 'mimundoreal', true]] as [$tls, $network, $sendKey]) {
+            $node = new Server();
+            $node->forceFill([
+                'type' => 'mx',
+                'host' => 'edge.example.com',
+                'server_port' => 21411,
+                'protocol_settings' => [
+                    'tls' => $tls,
+                    'network' => $network,
+                    'tls_settings' => [
+                        'server_name' => 'edge.example.com',
+                        'private_key' => 'example-reality-key',
+                    ],
+                ],
+            ]);
+
+            $config = ServerService::buildNodeConfig($node);
+            $this->assertSame('edge.example.com', $config['tls_settings']['server_name']);
+            if ($sendKey) {
+                $this->assertSame('example-reality-key', $config['tls_settings']['private_key']);
+            } else {
+                $this->assertArrayNotHasKey('private_key', $config['tls_settings']);
+            }
         }
     }
 

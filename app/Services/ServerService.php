@@ -375,7 +375,7 @@ class ServerService
                 'server_name' => data_get($protocolSettings, 'server_name', data_get($protocolSettings, 'tls_settings.server_name')),
                 'allow_insecure' => (bool) data_get($protocolSettings, 'allow_insecure', data_get($protocolSettings, 'tls_settings.allow_insecure', false)),
                 'tls' => (int) data_get($protocolSettings, 'tls', 0),
-                'tls_settings' => data_get($protocolSettings, 'tls_settings', []),
+                'tls_settings' => self::mxTlsSettings($protocolSettings),
                 'network_settings' => $networkSettingsObject,
             ],
             'socks' => [
@@ -430,6 +430,19 @@ class ServerService
         }
 
         return $response;
+    }
+
+    private static function mxTlsSettings(array $settings): array
+    {
+        $tlsSettings = (array) data_get($settings, 'tls_settings', []);
+        $usesReality = (int) data_get($settings, 'tls', 0) === 2
+            || strcasecmp((string) data_get($settings, 'network', ''), 'mimundoreal') === 0;
+
+        if (!$usesReality) {
+            unset($tlsSettings['private_key']);
+        }
+
+        return $tlsSettings;
     }
 
     /**
