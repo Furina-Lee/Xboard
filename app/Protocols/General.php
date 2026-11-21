@@ -9,7 +9,7 @@ use App\Support\AbstractProtocol;
 
 class General extends AbstractProtocol
 {
-    public $flags = ['general', 'v2rayn', 'v2rayng', 'passwall', 'ssrplus', 'sagernet'];
+    public $flags = ['general', 'v2rayn', 'v2rayng', 'passwall', 'ssrplus', 'sagernet', 'mundoconnect', 'flclash-foss'];
 
     public $allowedProtocols = [
         Server::TYPE_VMESS,
@@ -29,7 +29,7 @@ class General extends AbstractProtocol
         'v2rayn.hysteria.protocol_settings.version' => [2 => '6.31'],
     ];
 
-    public function handle()
+    public function handle(bool $plainUris = false)
     {
         $servers = $this->servers;
         $user = $this->user;
@@ -50,7 +50,7 @@ class General extends AbstractProtocol
                 default => '',
             };
         }
-        return response(base64_encode($uri))
+        return response($plainUris ? $uri : base64_encode($uri))
             ->header('content-type', 'text/plain')
             ->header('subscription-userinfo', "upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}");
     }

@@ -65,6 +65,12 @@ SNI 输入框右侧的按钮可生成形如 `mx-<随机值>.example` 的合法�
 
 MX 节点的传输选择切到 MundoRDP 后，协议配置立即载入一个只含 `username` 的模板。用户名由 `user` 加 12 位随机十六进制字符组成。打开已有 MundoRDP 节点时会保留现有配置；可以在协议配置编辑器中主动插入新模板。
 
+#### FlClash-FOSS 的 MX 订阅
+
+FlClash-FOSS 的 Mundo 模式默认以 `mundoconnect/1.0` 请求订阅。面板会返回纯文本 URI，每行一个节点，MX 节点使用 `mx://`。只请求 MX 节点时也会使用这个格式。若客户端使用自定义 User-Agent，可在订阅地址追加 `format=uri`；只导入 MX 时，可同时加入 `types=mx`。已有查询参数使用 `&` 拼接。
+
+普通 Clash 客户端的混合协议订阅继续使用原来的 YAML 格式。要在 FlClash-FOSS 使用 MX，请把 URI 订阅导入 Mundo 模式。
+
 #### MX 的 TLS 和订阅链接
 
 普通 TLS 的 MX 配置不会下发 `tls_settings.private_key`。在面板的 TLS 设置开启「允许不安全」时，生成的 MX 链接带 `allowInsecure=1`。这个参数交给客户端决定是否跳过证书校验。更改节点的传输、SNI 或证书设置后，应刷新客户端订阅。生产环境使用常规证书校验时，SNI 应与服务端证书匹配。

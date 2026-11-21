@@ -76,17 +76,24 @@ class ClientController extends Controller
         $requestedTypes = $this->parseRequestedTypes($request->input('types'));
         $filterKeywords = $this->parseFilterKeywords($request->input('filter'));
 
-        $protocolClassName = ($explicitLoonFormat || $loonConfig) ? Loon::class : (
-            app('protocols.manager')->matchProtocolClassName($clientInfo['flag']) ?? General::class
-        );
-
         $serversFiltered = $this->filterServers(
             servers: $servers,
             allowedTypes: $requestedTypes,
             filterKeywords: $filterKeywords
         );
 
-        if (!$loonConfig) {
+        $mxOnly = $requestedTypes === [Server::TYPE_MX]
+            || array_values(array_unique(array_column($serversFiltered, 'type'))) === [Server::TYPE_MX];
+        $plainUris = !$explicitLoonFormat && !$loonConfig && (
+            $format === 'uri' || $mxOnly
+            || in_array($clientInfo['name'], ['mundoconnect', 'flclash-foss'], true)
+        );
+        $protocolClassName = $plainUris ? General::class : (
+            ($explicitLoonFormat || $loonConfig) ? Loon::class
+                : (app('protocols.manager')->matchProtocolClassName($clientInfo['flag']) ?? General::class)
+        );
+
+        if (!$loonConfig && !$plainUris) {
             $this->setSubscribeInfoToServers($serversFiltered, $user, count($servers) - count($serversFiltered));
         }
         $serversFiltered = $this->addPrefixToServerName($serversFiltered);
@@ -99,6 +106,10 @@ class ClientController extends Controller
             'clientVersion' => $clientInfo['version'] ?? null,
             'userAgent' => $clientInfo['flag'] ?? null
         ]);
+
+        if ($plainUris) {
+            return $protocolInstance->handle(plainUris: true);
+        }
 
         return $loonConfig ? $protocolInstance->handleConfig() : $protocolInstance->handle();
     }
