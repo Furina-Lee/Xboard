@@ -22,7 +22,10 @@ class ServerController extends Controller
             $customUrl = trim((string) admin_setting('server_ws_url', ''));
 
             if ($customUrl !== '') {
-                $wsUrl = rtrim($customUrl, '/');
+                $wsUrl = preg_replace('/^http(s?):/i', 'ws$1:', $customUrl);
+                if (preg_match('~^wss?://[^/?#]+/?$~i', $wsUrl)) {
+                    $wsUrl = rtrim($wsUrl, '/') . '/ws';
+                }
             } else {
                 $wsScheme = $request->isSecure() ? 'wss' : 'ws';
                 $wsUrl = "{$wsScheme}://{$request->getHttpHost()}/ws";
