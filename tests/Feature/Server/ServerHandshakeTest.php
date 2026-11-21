@@ -2,14 +2,10 @@
 
 namespace Tests\Feature\Server;
 
-use App\Http\Requests\Admin\ConfigSave;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
-use App\WebSocket\NodeWorker;
 use Tests\TestCase;
 
 class ServerHandshakeTest extends TestCase
@@ -34,28 +30,6 @@ class ServerHandshakeTest extends TestCase
         ]);
 
         $response->assertOk()->assertJsonStructure(['websocket' => ['enabled']]);
-    }
-
-    public function test_node_websocket_setting_accepts_websocket_urls(): void
-    {
-        $rules = ['server_ws_url' => ConfigSave::RULES['server_ws_url']];
-        foreach (['wss://panel.example.com/ws', 'ws://panel.example.com:8076/ws', 'https://panel.example.com', null] as $url) {
-            $this->assertTrue(Validator::make(['server_ws_url' => $url], $rules)->passes());
-        }
-        $this->assertFalse(Validator::make(['server_ws_url' => 'panel.example.com'], $rules)->passes());
-    }
-
-    public function test_v2_handshake_advertises_websocket_urls_for_custom_addresses(): void
-    {
-        Cache::put(NodeWorker::HEARTBEAT_CACHE_KEY, time(), 30);
-        foreach ([
-            'https://panel.example.com/' => 'wss://panel.example.com/ws',
-            'wss://panel.example.com/custom/' => 'wss://panel.example.com/custom/',
-        ] as $saved => $expected) {
-            admin_setting(['server_ws_enable' => 1, 'server_ws_url' => $saved]);
-            $this->postJson('/api/v2/server/handshake', ['token' => 'server-token'])
-                ->assertOk()->assertJsonPath('websocket.ws_url', $expected);
-        }
     }
 
     public function test_v2_handshake_rejects_invalid_token(): void

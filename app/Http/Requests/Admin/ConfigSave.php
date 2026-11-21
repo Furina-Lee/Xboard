@@ -54,7 +54,7 @@ class ConfigSave extends FormRequest
         'server_push_interval' => 'integer',
         'device_limit_mode' => 'integer',
         'server_ws_enable' => 'boolean',
-        'server_ws_url' => 'nullable|url:ws,wss,http,https',
+        'server_ws_url' => 'nullable|url',
         'node_installer_url' => ['nullable', 'string', 'max:2048', 'url:https'],
         'node_installer_instance' => ['nullable', 'string', 'regex:/\A[a-z0-9][a-z0-9-]{0,31}\z/'],
         'node_installer_version' => ['nullable', 'string', 'max:128', 'regex:/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/'],
@@ -143,7 +143,6 @@ class ConfigSave extends FormRequest
         return [
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
             'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
-            'server_ws_url.url' => 'WebSocket 地址格式不正确，请填写 ws:// 或 wss:// 开头的完整地址。',
             'server_token.min' => '通讯密钥长度必须大于16位',
             'tos_url.url' => '服务条款URL格式不正确，必须携带http(s)://',
             'telegram_webhook_url.url' => 'Telegram Webhook地址格式不正确，必须携带http(s)://',
