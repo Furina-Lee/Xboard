@@ -56,6 +56,7 @@ class ConfigSave extends FormRequest
         'server_ws_enable' => 'boolean',
         'server_ws_url' => 'nullable|url',
         'node_installer_url' => ['nullable', 'string', 'max:2048', 'url:https'],
+        'node_installer_instance' => ['nullable', 'string', 'regex:/\A[a-z0-9][a-z0-9-]{0,31}\z/'],
         'node_installer_version' => ['nullable', 'string', 'max:128', 'regex:/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/'],
         // frontend
         'frontend_theme' => '',

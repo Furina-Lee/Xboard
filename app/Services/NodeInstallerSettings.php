@@ -14,6 +14,11 @@ class NodeInstallerSettings
         return self::value('node_installer_version', 'machine.installer_version');
     }
 
+    public static function instance(): string
+    {
+        return self::value('node_installer_instance', 'machine.installer_instance');
+    }
+
     private static function value(string $key, string $configKey): string
     {
         $saved = admin_setting($key);

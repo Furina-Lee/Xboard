@@ -149,6 +149,7 @@ class ConfigController extends Controller
                 'server_ws_enable' => (bool) admin_setting('server_ws_enable', 1),
                 'server_ws_url' => admin_setting('server_ws_url', ''),
                 'node_installer_url' => NodeInstallerSettings::url(),
+                'node_installer_instance' => NodeInstallerSettings::instance(),
                 'node_installer_version' => NodeInstallerSettings::version(),
             ],
             'email' => [
@@ -237,7 +238,7 @@ class ConfigController extends Controller
                 $themeService = app(ThemeService::class);
                 $themeService->switch($v);
             }
-            if (in_array($k, ['node_installer_url', 'node_installer_version'], true)) {
+            if (in_array($k, ['node_installer_url', 'node_installer_version', 'node_installer_instance'], true)) {
                 // Preserve versions as strings through the settings layer's JSON decoding.
                 $v = ['value' => $v];
             }

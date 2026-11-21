@@ -208,6 +208,10 @@ class MachineController extends Controller
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
         $installerUrl = trim(NodeInstallerSettings::url());
         $installerVersion = NodeInstallerSettings::version();
+        $instance = NodeInstallerSettings::instance();
+        if ($instance !== '' && !preg_match('/\A[a-z0-9][a-z0-9-]{0,31}\z/', $instance)) {
+            throw new ApiException('XBOARD_NODE_INSTALLER_INSTANCE 格式无效。');
+        }
         if (!filter_var($installerUrl, FILTER_VALIDATE_URL) || !preg_match('/\Ahttps:\/\//i', $installerUrl)) {
             throw new ApiException('XBOARD_NODE_INSTALLER_URL 必须是有效的 HTTPS 地址。');
         }
@@ -221,6 +225,7 @@ class MachineController extends Controller
             escapeshellarg($panelUrl),
             escapeshellarg($machine->token),
             $machine->id
-        ) . ($installerVersion === '' ? '' : ' --version ' . escapeshellarg($installerVersion));
+        ) . ($installerVersion === '' ? '' : ' --version ' . escapeshellarg($installerVersion))
+            . ($instance === '' ? '' : ' --instance ' . escapeshellarg($instance));
     }
 }

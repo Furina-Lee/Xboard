@@ -65,6 +65,10 @@ SNI 输入框右侧的按钮可生成形如 `mx-<随机值>.example` 的合法�
 
 MX 节点的传输选择切到 MundoRDP 后，协议配置立即载入一个只含 `username` 的模板。用户名由 `user` 加 12 位随机十六进制字符组成。打开已有 MundoRDP 节点时会保留现有配置；可以在协议配置编辑器中主动插入新模板。
 
+#### 同机部署多个面板的节点实例
+
+在「系统配置 → 节点设置 → 节点安装源」填写「节点实例名称」。在同一台节点机上，每个面板使用不同名称，例如 `airport-a` 和 `airport-b`。保存后，服务器管理新生成的命令会附带 `--instance`。留空使用默认实例。不同面板分配的节点监听端口须错开。[节点端说明](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#同机连接多个面板)
+
 #### FlClash-FOSS 的 MX 订阅
 
 FlClash-FOSS 的 Mundo 模式默认以 `mundoconnect/1.0` 请求订阅。面板会返回纯文本 URI，每行一个节点，MX 节点使用 `mx://`。只请求 MX 节点时也会使用这个格式。若客户端使用自定义 User-Agent，可在订阅地址追加 `format=uri`；只导入 MX 时，可同时加入 `types=mx`。已有查询参数使用 `&` 拼接。

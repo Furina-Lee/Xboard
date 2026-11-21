@@ -6,7 +6,7 @@ $manifestFile = $root . '/manifest.json';
 $manifest = json_decode(file_get_contents($manifestFile), true, 512, JSON_THROW_ON_ERROR);
 $entry = $manifest['index.html']['file'];
 $source = file_get_contents($root . '/' . $entry);
-if (str_contains($source, 'function xboardGenerateMundoRdpTemplate(')) {
+if (str_contains($source, 'const xboardInstallerInstanceLabels =')) {
     exit(0);
 }
 if (str_contains($source, 'function xboardGenerateMc1Template(')) {
@@ -103,6 +103,26 @@ $source = substr_replace($source,
 
 $transportControl = 'onValueChange:n.onChange,value:n.value,children:[Q.jsx(Czt,{className:"font-mono text-xs",children:Q.jsx(wzt,{placeholder:t("dynamic_form.vmess.network.placeholder")})})';
 $source = replaceOnce($source, $transportControl, str_replace('onValueChange:n.onChange', 'onValueChange:mxMode?next=>xboardChangeMxTransport(e,n,next):n.onChange', $transportControl));
+
+$source = replaceOnce($source, 'const {node_installer_url, node_installer_version, ...e}=s.data.server',
+    'const {node_installer_url, node_installer_version, node_installer_instance, ...e}=s.data.server');
+$source = replaceOnce($source, '  const chinese = i18n.language?.startsWith("zh");', <<<'JS'
+  const chinese = i18n.language?.startsWith("zh");
+  const xboardInstallerInstanceLabels = {
+    "zh-CN": ["节点实例名称", "用于在同一台机器上区分不同面板。小写字母、数字和连字符，最多 32 位。留空使用默认实例。"],
+    "en-US": ["Node instance name", "Use a different name for each panel on the same host. Up to 32 lowercase letters, digits or hyphens. Leave blank for the default instance."],
+    "ru-RU": ["Имя экземпляра узла", "Используйте разные имена для панелей на одном сервере. До 32 строчных латинских букв, цифр или дефисов. Пустое поле выбирает экземпляр по умолчанию."],
+  };
+  const instanceCopy = xboardInstallerInstanceLabels[i18n.language] || xboardInstallerInstanceLabels["en-US"];
+JS);
+$source = replaceOnce($source, '    node_installer_version: current?.node_installer_version ?? "",',
+    '    node_installer_version: current?.node_installer_version ?? "",' . "\n" . '    node_installer_instance: current?.node_installer_instance ?? "",');
+$source = replaceOnce($source, '        node_installer_version: values.node_installer_version.trim() || null,',
+    '        node_installer_version: values.node_installer_version.trim() || null,' . "\n" . '        node_installer_instance: values.node_installer_instance.trim() || null,');
+$source = replaceOnce($source, '      field("node_installer_version", "XBOARD_NODE_INSTALLER_VERSION", "text", 128),',
+    '      field("node_installer_version", "XBOARD_NODE_INSTALLER_VERSION", "text", 128),' . "\n"
+    . '      field("node_installer_instance", instanceCopy[0], "text", 32),' . "\n"
+    . '      Q.jsx("p", {className:"text-sm text-muted-foreground", children:instanceCopy[1]}),');
 
 $name = 'assets/index-mc1-' . substr(hash('sha256', $source), 0, 12) . '.js';
 file_put_contents($root . '/' . $name, $source);
