@@ -301,11 +301,13 @@ class Helper
             'type' => $network,
         ];
 
+        $serverName = trim((string) data_get($settings, 'server_name'))
+            ?: trim((string) data_get($tlsSettings, 'server_name'));
+
         switch ((int) data_get($settings, 'tls', 0)) {
             case 1:
                 $config['security'] = 'tls';
                 $config['fp'] = data_get($tlsSettings, 'fingerprint', 'chrome');
-                $serverName = data_get($settings, 'server_name') ?: data_get($tlsSettings, 'server_name', '');
                 if ($serverName !== '') {
                     $config['sni'] = $serverName;
                 }
@@ -317,7 +319,6 @@ class Helper
                 $config['security'] = 'reality';
                 $config['pbk'] = data_get($tlsSettings, 'public_key', '');
                 $config['sid'] = data_get($tlsSettings, 'short_id', '');
-                $serverName = data_get($settings, 'server_name') ?: data_get($tlsSettings, 'server_name', '');
                 if ($serverName !== '') {
                     $config['sni'] = $serverName;
                     $config['servername'] = $serverName;
@@ -342,7 +343,14 @@ class Helper
                 }
                 break;
             case 'mc1':
-                self::configureMc1Settings($networkSettings, $config, $server['host'] ?? '');
+                $config['sni'] = $serverName ?: $server['host'];
+                if (trim((string) ($networkSettings['host'] ?? '')) === '') {
+                    $networkSettings['host'] = $config['sni'];
+                }
+                if (trim((string) ($networkSettings['path'] ?? '')) === '') {
+                    $networkSettings['path'] = '/';
+                }
+                self::configureMc1Settings($networkSettings, $config);
                 break;
             case 'mundordp':
                 self::configureMundoRdpSettings($networkSettings, $config);
@@ -361,7 +369,7 @@ class Helper
             . '?' . http_build_query(array_filter(
                 $config,
                 static fn($value) => $value !== null && $value !== ''
-            ))
+            ), '', '&', PHP_QUERY_RFC3986)
             . '#' . self::encodeURIComponent($server['name']) . "\r\n";
     }
 

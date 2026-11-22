@@ -23,7 +23,7 @@ class HelperMxProtocolTest extends TestCase
                 ],
                 'network' => 'mc1',
                 'network_settings' => [
-                    'path' => '/connect',
+                    'path' => '/connect path+1',
                     'host' => 'transport.example.com',
                     'mode' => 'websocket',
                     'cidrSegments' => ['10', '20'],
@@ -34,9 +34,47 @@ class HelperMxProtocolTest extends TestCase
         $this->assertStringStartsWith('mx://user-token@example.com:443?', $uri);
         $this->assertStringContainsString('security=tls', $uri);
         $this->assertStringContainsString('type=mc1', $uri);
+        $this->assertStringContainsString('sni=edge.example.com', $uri);
+        $this->assertStringContainsString('host=transport.example.com', $uri);
+        $this->assertStringContainsString('path=%2Fconnect%20path%2B1', $uri);
         $this->assertStringContainsString('mode=websocket', $uri);
         $this->assertStringContainsString('cidr=10%2C20', $uri);
         $this->assertStringContainsString('#Mundo%20MX', $uri);
+    }
+
+    public function test_mx_mc1_uri_includes_host_path_and_sni_when_settings_are_empty(): void
+    {
+        $uri = Helper::buildMxUri('user-token', [
+            'host' => 'edge.example.com',
+            'port' => 443,
+            'name' => 'MX',
+            'protocol_settings' => [
+                'network' => 'mc1',
+                'network_settings' => ['host' => '', 'path' => ''],
+            ],
+        ]);
+
+        parse_str(parse_url($uri, PHP_URL_QUERY), $query);
+        $this->assertSame('edge.example.com', $query['sni']);
+        $this->assertSame('edge.example.com', $query['host']);
+        $this->assertSame('/', $query['path']);
+    }
+
+    public function test_mx_rdp_uri_encodes_username(): void
+    {
+        $uri = Helper::buildMxUri('user-token', [
+            'host' => '2001:db8::42',
+            'port' => 443,
+            'name' => 'RDP',
+            'protocol_settings' => [
+                'network' => 'mundordp',
+                'network_settings' => ['username' => 'RDP User+1'],
+            ],
+        ]);
+
+        $this->assertStringStartsWith('mx://user-token@[2001:db8::42]:443?', $uri);
+        $this->assertStringContainsString('type=mundordp', $uri);
+        $this->assertStringContainsString('username=RDP%20User%2B1', $uri);
     }
 
     public function test_mx_uri_prefers_tls_allow_insecure_and_supports_the_legacy_setting(): void
