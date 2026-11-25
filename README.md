@@ -27,23 +27,15 @@
 
 开发者可在 [后台前端产物仓库](https://github.com/Furina-Lee/xboard-admin-dist/tree/master) 复制 `themes/minimal/theme.css`，修改主题 ID 和选择器并用 `preview.html` 预览。需要自定义 CSS 布局时，将主题作为受信任的构建产物提交，更新主仓库的 `public/assets/admin` 子模块指针并部署新镜像。部署后，在后台选中新主题并点击 **应用到所有管理员**。完整的目录约定和预览步骤见[后台主题开发指南](https://github.com/Furina-Lee/xboard-admin-dist/blob/master/README.md#新建主题)。
 
-## 面板与节点的升级顺序
+## 节点管理
 
-1. 按现有部署方式更新 Xboard 镜像并重新创建容器。保留原部署目录、数据库及 Compose 的 `-f` 参数，确认 `node_traffic_reports` 数据库迁移已执行。
-2. 在「系统配置 → 节点设置」核对安装地址和版本覆盖，再去「服务器管理」复制最新的安装命令。已装新版独立节点的机器按 [节点端就地升级](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#更新已安装的新版节点) 更新程序。
-3. 刷新实际客户端订阅，选中目标节点后完成一次真实下载，再比对账号已用流量。面板显示在线、节点 TCP 端口可达和客户端延迟测试都不能代替这项验收。
+在 **服务器管理** 创建机器和 MX 节点，并管理节点的绑定及启用状态。通过机器详情可复制安装命令。
 
-## 选择节点部署方式
+在 **系统配置 → 节点设置 → 节点安装源** 可覆盖安装脚本地址及版本，也可设置生成命令时使用的节点实例名称。清空这些字段后，面板使用部署默认值。如果部署的 `.env` 设置了 `XBOARD_NODE_INSTALLER_URL`、`XBOARD_NODE_INSTALLER_VERSION` 或 `XBOARD_NODE_INSTALLER_INSTANCE`，面板会使用相应的部署值。
 
-| 场景 | 部署方式 | 凭据 |
-| --- | --- | --- |
-| 新装机器，或一台机器管理多个节点 | [从服务器管理一键安装](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#a-服务器管理一键安装) | 机器 ID 和机器 Token，面板自动加入命令 |
-| 新装独立单节点或单独测试 MX | [手动安装独立单节点](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#b-手动安装独立单节点) | 节点 ID 和面板服务端通信密钥 |
-| 维护已有的旧版 Xboard-Node 容器 | [旧版节点 Docker Compose](https://github.com/Furina-Lee/MX-WebSocket-Node/tree/compose) | 沿用旧版部署的配置 |
+节点机的安装、升级、旧版迁移、多实例和运行验收见 [MX-WebSocket-Node 部署文档](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md)。
 
-新版 MX 节点需使用节点机上已有的原版 `proxy-node`，全新机器先解压对应架构的二进制。流量上报需要执行 `node_traffic_reports` 数据库迁移。WebSocket 实时下发需要面板开关、worker 和 `/ws` 反代同时可用。未配置 WebSocket 时，当前节点端可通过同一面板 HTTPS 地址获取配置并上报流量。
-
-在 **系统配置 → 节点设置** 可覆盖节点安装地址和版本。默认地址为 `https://raw.githubusercontent.com/Furina-Lee/MX-WebSocket-Node/dev/install.sh`。版本覆盖会传给安装脚本作为 `--version`，仅使用包含新版安装器及配套文件的 Git 标签或提交。清空并保存可恢复部署默认；如部署的 `.env` 仍定义 `XBOARD_NODE_INSTALLER_URL` 或 `XBOARD_NODE_INSTALLER_VERSION`，也需核对其中的值。自定义脚本须兼容 `--mode machine --panel --token --machine-id`，固定版本时还须兼容 `--version`。
+## 订阅与 MX 配置
 
 ### Loon 完整配置
 
@@ -51,9 +43,7 @@
 
 在用户的订阅链接后添加 `?format=loon-config`。如果已经有查询参数，用 `&format=loon-config`。把生成的 URL 作为 **远程配置** 导入 Loon。用户订阅 API 也会返回 `loon_config_url`。在 **系统配置 → 订阅设置** 打开 **Loon 通用订阅下发完整配置** 后，Loon 的「远程配置」可直接使用通用订阅链接。此开关默认关闭。打开后，旧的 Loon 远程节点订阅可在链接上添加 `format=loon-nodes`，继续获取节点列表。
 
-### 部署 MX 节点
-
-在面板创建并启用 MX 节点，绑定到目标机器，再从 **服务器管理** 复制机器安装命令。新版独立节点会发现已启用的节点并获取配置。准备原版 `proxy-node` 与核验 WebSocket 的步骤见 [MX WebSocket 节点安装说明](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md)。
+### MX 协议配置
 
 #### MC1 配置模板
 
@@ -64,10 +54,6 @@ SNI 输入框右侧的按钮可生成形如 `mx-<随机值>.example` 的合法�
 #### MundoRDP 配置模板
 
 MX 节点的传输选择切到 MundoRDP 后，协议配置立即载入一个只含 `username` 的模板。用户名由 `user` 加 12 位随机十六进制字符组成。打开已有 MundoRDP 节点时会保留现有配置；可以在协议配置编辑器中主动插入新模板。
-
-#### 同机部署多个面板的节点实例
-
-在「系统配置 → 节点设置 → 节点安装源」填写「节点实例名称」。在同一台节点机上，每个面板使用不同名称，例如 `airport-a` 和 `airport-b`。保存后，服务器管理新生成的命令会附带 `--instance`。留空使用默认实例。不同面板分配的节点监听端口须错开。[节点端说明](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#同机连接多个面板)
 
 #### FlClash-FOSS 的 MX 订阅
 
@@ -87,7 +73,7 @@ FlClash-FOSS 的 Mundo 模式默认以 `mundoconnect/1.0` 请求订阅。面板�
 docker compose exec xboard php artisan migrate:status | grep node_traffic_reports
 ```
 
-若部署使用多个 Compose 文件，请沿用实际部署的全部 `-f` 参数。确认迁移完成后，继续使用旧版 Docker 节点的机器可按 [旧版 Compose 升级说明](https://github.com/Furina-Lee/MX-WebSocket-Node/tree/compose) 更新到 `v1.13-furina.7`。迁移到新版独立节点时，按 [MX WebSocket 安装说明](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md) 操作，并在迁移窗口释放旧监听端口。若面板曾保存自定义安装地址或版本，还需检查面板设置及 `.env`，清除旧覆盖后重新生成机器安装命令。
+若部署使用多个 Compose 文件，请沿用实际部署的全部 `-f` 参数。
 
 ## Docker 镜像
 
@@ -147,7 +133,7 @@ docker compose ps
 docker compose logs --tail=100 xboard | grep -Ei 'Starting services|ws-server|websocket'
 ```
 
-容器启动日志应出现 `ws=true`，随后出现 `ws-server` 进入 `RUNNING` 的记录。若 worker 已运行但面板依然返回 `websocket.enabled=false`，检查后台开关及 Web 与 worker 是否使用同一缓存连接和前缀。若已经返回地址却无法连接，检查 HTTPS 证书、`/ws` 代理和访问规则。最后在节点机确认日志出现 `Machine WebSocket connected with traffic acknowledgements`，用测试节点产生一笔流量并到面板确认入账。
+容器启动日志应出现 `ws=true`，随后出现 `ws-server` 进入 `RUNNING` 的记录。若 worker 已运行但面板依然返回 `websocket.enabled=false`，检查后台开关及 Web 与 worker 是否使用同一缓存连接和前缀。若已经返回地址却无法连接，检查 HTTPS 证书、`/ws` 代理和访问规则。节点连通性与上报验收见 [节点端验收文档](https://github.com/Furina-Lee/MX-WebSocket-Node/blob/dev/README.md#验收与维护)。
 
 ## 全新安装
 
