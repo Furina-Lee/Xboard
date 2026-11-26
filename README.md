@@ -137,7 +137,7 @@ docker compose logs --tail=100 xboard | grep -Ei 'Starting services|ws-server|we
 
 ## 全新安装
 
-在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/) 及 `curl`。先在终端进入要部署的目录，再执行下面对应版本的命令。安装器会在**当前目录**写入 `compose.yaml`、`.env`、`.docker/`、`storage/` 和 `plugins/`。SQLite 数据库位于 `.docker/.data/`，内置 Redis 数据位于 `.docker/redis/`。
+在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/) 及 `curl`。先在终端用 `cd` 进入要部署的目录，再执行对应版本的命令。安装器会在**当前目录**写入 `compose.yaml`、`.env`、`.docker/`、`storage/` 和 `plugins/`。SQLite 数据库位于 `.docker/.data/database.sqlite`，内置 Redis 数据位于 `.docker/redis/`。当前目录已有 `.env`、Compose 文件或部署数据目录时，脚本会退出。
 
 **标准版**
 
@@ -151,7 +151,15 @@ installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/mast
 installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- full
 ```
 
-安装时从数据库菜单选择 **SQLite**、**MySQL / MariaDB** 或 **PostgreSQL**。SQLite 无需单独部署数据库。使用 MySQL、MariaDB 或 PostgreSQL 时，先准备一个 Xboard 容器可访问的空数据库，再按提示输入主机、端口、数据库名、用户名和密码。PostgreSQL 需要包含 `pdo_pgsql` 的面板镜像。管理员账号按安装提示填写。
+### 选择数据库
+
+| 数据库 | 安装前准备 |
+| --- | --- |
+| SQLite | 直接选择 SQLite，安装器会在当前部署目录创建数据库文件。 |
+| MySQL / MariaDB | 准备一个 Xboard 容器可访问的空库。在菜单选择 MySQL，默认端口为 `3306`。 |
+| PostgreSQL | 准备一个 Xboard 容器可访问的空库，默认端口为 `5432`。此选项需要含 `pdo_pgsql` 的新版面板镜像。 |
+
+使用外部数据库时，按提示填写容器可访问的主机、端口、数据库名、用户名和密码。同一 Docker 网络里的数据库可以使用服务名或容器名。管理员账号按安装提示填写。
 
 保存安装程序输出的管理员凭据和后台路径，访问 `http://服务器地址:7001`。排查启动问题可在当前部署目录执行 `docker compose logs --tail=100 xboard`。
 
