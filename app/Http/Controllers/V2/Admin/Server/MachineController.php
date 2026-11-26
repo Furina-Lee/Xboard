@@ -203,9 +203,27 @@ class MachineController extends Controller
         return $this->success($history);
     }
 
+    private function resolveInstallerPanelUrl(Request $request): string
+    {
+        $webSocketUrl = trim((string) admin_setting('server_ws_url', ''));
+        if ($webSocketUrl === '') {
+            return 'https://' . $request->getHttpHost();
+        }
+
+        $url = parse_url($webSocketUrl);
+        if (!$url || empty($url['host'])
+            || !in_array(strtolower($url['scheme'] ?? ''), ['http', 'https', 'ws', 'wss'], true)
+            || isset($url['user']) || isset($url['pass'])) {
+            throw new ApiException('请在节点设置中填写有效的 WebSocket 地址。');
+        }
+
+        // The installer contacts the machine API over HTTPS, at the WebSocket origin.
+        return 'https://' . $url['host'] . (isset($url['port']) ? ':' . $url['port'] : '');
+    }
+
     private function buildInstallCommand(Request $request, ServerMachine $machine): string
     {
-        $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
+        $panelUrl = $this->resolveInstallerPanelUrl($request);
         $installerUrl = trim(NodeInstallerSettings::url());
         $installerVersion = NodeInstallerSettings::version();
         $instance = NodeInstallerSettings::instance();
