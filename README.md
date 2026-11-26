@@ -103,10 +103,14 @@ GitHub Actions 从 `master` 构建镜像。可用 `standard-<SHA>` 或 `full-<SH
 
 Xboard 后台「系统配置 → 节点配置」的 WebSocket 开关与容器变量分开生效。后台需要开启 WebSocket，且能从缓存读取 worker 心跳，才会向节点公布 WebSocket 地址。使用 HTTPS 面板时，节点应收到可访问的 `wss://你的面板域名/ws`。若 TLS 在反代终止，请正确转发 `X-Forwarded-Proto`；也可在后台显式设置完整的 `wss://` 地址。
 
-**1Panel / 标准版**
+**1Panel 一键部署**
+
+默认通过 `7001` 提供面板和节点 HTTPS API。安装模板关闭 WebSocket worker，节点通过面板 HTTPS 获取配置并上报状态和流量。站点反向代理指向宿主机 `127.0.0.1:7001` 即可。
+
+**标准版手动启用 WebSocket**
 
 1. 在「容器 → 编排」检查 Xboard 服务的 Compose 配置。旧编排或旧迁移生成的 override 可能仍有 `ENABLE_WS_SERVER: "false"`，需要改为 `"true"` 或删除该覆盖。要应用镜像或环境变量变更，请重新创建容器。单纯重启不会加载新的 Compose 环境变量。
-2. 宿主机运行 OpenResty 时，保留现有 HTTP 映射，并增加 `127.0.0.1:8076:8076`。新版 [1Panel Compose 模板](./compose.1panel.sample.yaml) 已包含此映射。若已有端口占用，可用 `127.0.0.1:18076:8076`，并把反代上游端口改成 `18076`。如果反代本身在容器内，且与 Xboard 在同一 Docker 网络，用 Xboard 容器的网络别名和 `8076`，不要用反代容器自己的 `127.0.0.1`。
+2. 宿主机运行 OpenResty 时，保留现有 HTTP 映射，并增加 `127.0.0.1:8076:8076`。此映射可按需手动添加。若已有端口占用，可用 `127.0.0.1:18076:8076`，并把反代上游端口改成 `18076`。如果反代本身在容器内，且与 Xboard 在同一 Docker 网络，用 Xboard 容器的网络别名和 `8076`，不要用反代容器自己的 `127.0.0.1`。
 3. 在 1Panel 对应网站的 OpenResty 配置中，站点原来的 HTTP 上游继续指向 `7001`。在同一个 `server` 块内添加或修改下面的 `/ws` 规则。此例适用于宿主机上的 OpenResty。
 
 ```nginx
@@ -151,6 +155,16 @@ installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/mast
 installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- full
 ```
 
+### 1Panel 一键部署
+
+先在终端进入部署目录，确认 1Panel 的 Docker 网络 `1panel-network` 已存在，然后执行：
+
+```bash
+installer="$(curl -fsSL --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install-1panel.sh)" && bash -c "$installer"
+```
+
+脚本使用标准版镜像，加入 `1panel-network`，只映射 `7001`。在 1Panel 中把 HTTPS 网站反代到 `http://127.0.0.1:7001`。使用同一 Docker 网络上的数据库时，安装菜单中的数据库主机填写容器名。
+
 ### 选择数据库
 
 | 数据库 | 安装前准备 |
@@ -163,7 +177,6 @@ installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/mast
 
 保存安装程序输出的管理员凭据和后台路径，访问 `http://服务器地址:7001`。排查启动问题可在当前部署目录执行 `docker compose logs --tail=100 xboard`。
 
-- **1Panel** 将安装命令中的 `standard` 换成 `1panel`。安装器连接外部 Docker 网络 `1panel-network`。使用同一网络上的数据库容器时，主机填写容器名。反向代理指向宿主机 `127.0.0.1:7001`。
 - **aaPanel** 使用标准版并将站点反向代理指向 `127.0.0.1:7001`。需要宿主机网络时，可使用 [host 模板](./compose.host.sample.yaml)。
 
 ## 迁移已有 Docker 部署

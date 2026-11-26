@@ -21,6 +21,10 @@ esac
 command -v curl >/dev/null
 docker compose version >/dev/null
 [[ -t 0 ]] || { printf '请在交互式终端运行安装脚本。\n' >&2; exit 1; }
+if [[ $edition == 1panel ]] && ! docker network inspect 1panel-network >/dev/null 2>&1; then
+  printf '找不到 Docker 网络 1panel-network。请先在 1Panel 中确认该网络可用。\n' >&2
+  exit 1
+fi
 umask 077
 lock=./.xboard-install.lock
 mkdir -- "$lock" || { printf '当前目录无法加锁，或已有安装在运行。\n' >&2; exit 1; }

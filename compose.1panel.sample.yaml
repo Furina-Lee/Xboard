@@ -13,9 +13,9 @@ services:
   xboard:
     image: ghcr.io/furina-lee/xboard:standard
     restart: unless-stopped
+    # The node API shares the HTTPS panel endpoint via the reverse proxy.
     ports:
       - "7001:7001"
-      - "127.0.0.1:8076:8076" # WebSocket upstream for host OpenResty
     networks:
       - default
       - 1panel-network
@@ -31,6 +31,7 @@ services:
       - ENABLE_HORIZON=true
       - ENABLE_REDIS=true
       - ENABLE_CADDY=false
+      - ENABLE_WS_SERVER=false
       - docker=true
 
 networks:
