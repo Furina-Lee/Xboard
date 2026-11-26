@@ -137,27 +137,26 @@ docker compose logs --tail=100 xboard | grep -Ei 'Starting services|ws-server|we
 
 ## 全新安装
 
-在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/) 及 `curl`。以下两条命令任选其一，在终端执行。安装器会使用空目录、SQLite 和内置 Redis，并提示输入管理员邮箱。
+在 Linux 上准备 [Docker Engine 和 Docker Compose v2](https://docs.docker.com/engine/install/) 及 `curl`。先在终端进入要部署的目录，再执行下面对应版本的命令。安装器会在**当前目录**写入 `compose.yaml`、`.env`、`.docker/`、`storage/` 和 `plugins/`。SQLite 数据库位于 `.docker/.data/`，内置 Redis 数据位于 `.docker/redis/`。
 
 **标准版**
 
 ```bash
-installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- standard "$HOME/xboard"
+installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- standard
 ```
 
 **完整版**
 
 ```bash
-installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- full "$HOME/xboard"
+installer="$(curl -fsSL https://raw.githubusercontent.com/Furina-Lee/Xboard/master/scripts/install.sh)" && bash -c "$installer" -- full
 ```
 
-保存安装程序输出的管理员凭据和后台路径，访问 `http://服务器地址:7001`。排查启动问题可在部署目录执行 `docker compose logs --tail=100 xboard`。
+安装时从数据库菜单选择 **SQLite**、**MySQL / MariaDB** 或 **PostgreSQL**。SQLite 无需单独部署数据库。使用 MySQL、MariaDB 或 PostgreSQL 时，先准备一个 Xboard 容器可访问的空数据库，再按提示输入主机、端口、数据库名、用户名和密码。PostgreSQL 需要包含 `pdo_pgsql` 的面板镜像。管理员账号按安装提示填写。
 
-### MySQL 和面板管理
+保存安装程序输出的管理员凭据和后台路径，访问 `http://服务器地址:7001`。排查启动问题可在当前部署目录执行 `docker compose logs --tail=100 xboard`。
 
-- **1Panel**：将安装命令中的 `standard` 换成 `1panel`。安装器使用[专用 Compose 模板](./compose.1panel.sample.yaml)，连接外部 Docker 网络 `1panel-network`。选择 MySQL 时填写该网络上的数据库容器名。反向代理指向宿主机 `127.0.0.1:7001`。
-- **其他 MySQL 部署**：按 [Compose 手动安装教程](./docs/en/installation/docker-compose.md) 初始化，安装时选择 MySQL。
-- **aaPanel**：使用标准版并将站点反向代理指向 `127.0.0.1:7001`。需要宿主机网络时，可使用 [host 模板](./compose.host.sample.yaml)。
+- **1Panel** 将安装命令中的 `standard` 换成 `1panel`。安装器连接外部 Docker 网络 `1panel-network`。使用同一网络上的数据库容器时，主机填写容器名。反向代理指向宿主机 `127.0.0.1:7001`。
+- **aaPanel** 使用标准版并将站点反向代理指向 `127.0.0.1:7001`。需要宿主机网络时，可使用 [host 模板](./compose.host.sample.yaml)。
 
 ## 迁移已有 Docker 部署
 

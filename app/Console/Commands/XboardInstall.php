@@ -76,13 +76,16 @@ class XboardInstall extends Command
                 return;
             }
             // 选择数据库类型
+            $databaseOptions = [
+                'sqlite' => 'SQLite (无需额外安装)',
+                'mysql' => 'MySQL / MariaDB',
+            ];
+            if (extension_loaded('pdo_pgsql')) {
+                $databaseOptions['postgresql'] = 'PostgreSQL';
+            }
             $dbType = $enableSqlite ? 'sqlite' : select(
                 label: '请选择数据库类型',
-                options: [
-                    'sqlite' => 'SQLite (无需额外安装)',
-                    'mysql' => 'MySQL',
-                    'postgresql' => 'PostgreSQL'
-                ],
+                options: $databaseOptions,
                 default: 'sqlite'
             );
 

@@ -2,43 +2,55 @@
 set -euo pipefail
 
 edition="${1:-standard}"
-project_dir="${2:-$HOME/xboard}"
 template=compose.sample.yaml
-database_env=(-e ENABLE_SQLITE=true)
+usage() { printf '用法：install.sh [standard|full|1panel]（安装到当前目录）\n'; }
+if [[ $edition == -h || $edition == --help ]]; then
+  usage
+  exit 0
+fi
+if (( $# > 1 )); then
+  usage >&2
+  exit 2
+fi
 case "$edition" in
   standard|full) ;;
-  1panel)
-    template=compose.1panel.sample.yaml
-    database_env=()
-    ;;
-  *) printf 'Usage: install.sh [standard|full|1panel] [directory]\n' >&2; exit 2 ;;
+  1panel) template=compose.1panel.sample.yaml ;;
+  *) usage >&2; exit 2 ;;
 esac
 
 command -v curl >/dev/null
 docker compose version >/dev/null
-[[ -t 0 ]] || { printf 'Run the installer in an interactive terminal.\n' >&2; exit 1; }
-mkdir -p "$project_dir"
-cd "$project_dir"
-if [[ -n "$(find . -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-  printf 'Choose an empty directory for a fresh install: %s\n' "$PWD" >&2
-  exit 1
-fi
-
+[[ -t 0 ]] || { printf '请在交互式终端运行安装脚本。\n' >&2; exit 1; }
 umask 077
-tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
-curl -fsSL "https://raw.githubusercontent.com/Furina-Lee/Xboard/master/$template" -o "$tmp"
-if [[ "$edition" == full ]]; then
-  sed 's|ghcr.io/furina-lee/xboard:standard|ghcr.io/furina-lee/xboard:full|' "$tmp" > compose.yaml
-else
-  cp "$tmp" compose.yaml
-fi
+lock=./.xboard-install.lock
+mkdir -- "$lock" || { printf '当前目录无法加锁，或已有安装在运行。\n' >&2; exit 1; }
+tmp="$lock/compose.template"
+trap 'rm -f -- "$tmp"; rmdir -- "$lock"' EXIT
+
+for path in .env .docker storage plugins compose.yaml compose.yml docker-compose.yaml docker-compose.yml \
+    compose.override.yaml compose.override.yml docker-compose.override.yaml docker-compose.override.yml; do
+  if [[ -e $path || -L $path ]]; then
+    printf '当前目录已有 %s。请切换到新的部署目录后再运行。\n' "$path" >&2
+    exit 1
+  fi
+done
+
+curl -fsSL --proto '=https' --proto-redir '=https' \
+  "https://raw.githubusercontent.com/Furina-Lee/Xboard/master/$template" -o "$tmp"
+
+image=standard
+[[ "$edition" != full ]] || image=full
+sed -e "s|ghcr.io/furina-lee/xboard:standard|ghcr.io/furina-lee/xboard:$image|" \
+    -e 's|      - redis-data:/data|      - ./.docker/redis:/data|' \
+    -e '/^volumes:$/d' -e '/^  redis-data:$/d' \
+    "$tmp" > compose.yaml
 touch .env
-docker compose config --quiet
-docker compose pull xboard
-docker compose run --rm "${database_env[@]}" -e ENABLE_REDIS=true xboard sh -c \
+compose=(docker compose -f compose.yaml)
+"${compose[@]}" config --quiet
+"${compose[@]}" pull xboard
+"${compose[@]}" run --rm -e ENABLE_SQLITE= -e ENABLE_REDIS=true xboard sh -c \
   'php artisan xboard:install && grep -qE "^INSTALLED=(1|true)$" /www/.env' \
-  || { printf 'Xboard initialization did not complete.\n' >&2; exit 1; }
-docker compose up -d
-docker compose ps
-printf 'Deployment directory: %s\n' "$PWD"
+  || { printf 'Xboard 初始化未完成。部署文件保留在 %s。\n' "$PWD" >&2; exit 1; }
+"${compose[@]}" up -d
+"${compose[@]}" ps
+printf '部署目录：%s\n' "$PWD"
